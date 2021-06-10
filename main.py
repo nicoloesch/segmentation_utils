@@ -2,12 +2,12 @@ import os
 import glob
 import sys
 from PyQt5.QtWidgets import QApplication
-from ui.mainWindow import Ui_MainWindow
+from ui.mainWindow import SegmentationUI
 
 
 def main():
     app = QApplication(sys.argv)
-    window = Ui_MainWindow()
+    window = SegmentationUI()
     window.show()
     app.exec_()
 
