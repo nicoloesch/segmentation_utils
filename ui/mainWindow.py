@@ -1,14 +1,34 @@
-
-from PyQt5.QtCore import QDir, Qt, QUrl
+from PyQt5.QtCore import QDir, Qt, QUrl, QPointF
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit,
                              QApplication, QFileDialog, QHBoxLayout, QLabel, QStackedWidget,
                              QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QGridLayout)
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtGui import QIcon, QPixmap, QPolygonF, QPainter, QColor, QBrush, QPen
+
 import sys
 import pathlib
+import base64
+from typing import List
+
 from utils.database import SQLiteDatabase, LabelStruct
+from utils import images
+
+import PIL.Image
+import imgviz
+
+COLOR_LIST = [Qt.red,
+              Qt.cyan,
+              Qt.yellow,
+              Qt.red,
+              Qt.green,
+              Qt.magenta,
+              Qt.darkBlue,
+              Qt.darkCyan,
+              Qt.darkYellow,
+              Qt.darkRed,
+              Qt.darkGreen,
+              Qt.darkMagenta]
 
 
 class SegmentationUI(QMainWindow):
@@ -22,9 +42,9 @@ class SegmentationUI(QMainWindow):
         self.basedir = None
         self.labeled_images = None
         self.image_idx = 0
+        self.label_names = {"_background_": 0}  # TODO: remove that and replace by table in SQL
 
         # Layouting
-        # Todo: add the image displayer for the image display of the labeled image
         # Todo: add option/ button to go back to the labeled image instead of the video
         mainWidget = QWidget()
         self.setCentralWidget(mainWidget)
@@ -105,6 +125,12 @@ class SegmentationUI(QMainWindow):
         self.positionSlider.setRange(0, 0)
         self.positionSlider.sliderMoved.connect(self.setPosition)
 
+        self.displayLabelButton = QPushButton("Display\nLabel")
+        self.displayLabelButton.setEnabled(False)
+
+        #TODO: call painter somewhere else
+        self._painter = QPainter()
+
         # Error Widget
         self.errorLabel = QLabel()
         self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
@@ -146,14 +172,31 @@ class SegmentationUI(QMainWindow):
                 QMediaContent(QUrl.fromLocalFile(fileName)))
             
         """
+
     #def exitCall(self):
         #sys.exit(app.exec_())
 
     def updateImages(self):
         self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
-        #label_list = LabelStruct.from_json(self.database.get_label_from_imagepath(self.labeled_images[self.image_idx]))
-        four = 4
+        self.label_image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
+        label_list = LabelStruct.from_json(self.database.get_label_from_imagepath(self.labeled_images[self.image_idx]))
+        self.drawLabel(label_list)
 
+    def drawLabel(self, labels: List[LabelStruct]):
+        # TODO: so far only polygons can be drawn
+        imagePath = str(self.basedir / self.labeled_images[self.image_idx])
+        s = []
+        for _label in labels:
+            points = QPolygonF([QPointF(point[0], point[1]) for point in _label.points])
+            label_name = _label.label_name
+            if label_name not in self.label_names:
+                self.label_names[label_name] = len(self.label_names)
+            self.PainterInstance.setPen(QPen(COLOR_LIST[self.label_names[label_name]], 5, Qt.SolidLine))
+            self.PainterInstance.drawPolygon(points)
+            # TODO: Canvas Class as in labelme
+            #  https://github.com/wkentaro/labelme/blob/115816d3e47c80f64e843085fb09cf878ce19dfa/labelme/widgets/canvas.py
+
+            
     def nextImage(self):
         self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
         self.updateImages()

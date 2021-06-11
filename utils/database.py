@@ -101,14 +101,14 @@ class LabelStruct:
         """Create Labelstruct from JSON dictionary.
         """
         return [LabelStruct(label_name=json_dict['label'],
-                            points=np.asarray(json_dict['points']),
+                            points=json_dict['points'],
                             group_id=json_dict['group_id'],
                             shape_type=json_dict['shape_type'],
                             flags=json_dict['flags']) for json_dict in json_list]
 
     def to_json(self):
         return {'label': self.label_name,
-                'points': self.points.tolist(),
+                'points': self.points,
                 'group_id': self.group_id,
                 'shape_type': self.shape_type,
                 'flags': self.flags}
