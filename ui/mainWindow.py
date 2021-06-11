@@ -2,13 +2,13 @@
 from PyQt5.QtCore import QDir, Qt, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import (QMainWindow,QWidget, QPushButton, QAction, QGridLayout,
-                             QApplication, QFileDialog, QHBoxLayout, QLabel,
+from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit,
+                             QApplication, QFileDialog, QHBoxLayout, QLabel, QStackedWidget,
                              QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QGridLayout)
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QPixmap
 import sys
 import pathlib
-from utils.database import SQLiteDatabase
+from utils.database import SQLiteDatabase, LabelStruct
 
 
 class SegmentationUI(QMainWindow):
@@ -20,6 +20,8 @@ class SegmentationUI(QMainWindow):
         # General
         self.database = None
         self.basedir = None
+        self.labeled_images = None
+        self.image_idx = 0
 
         # Layouting
         # Todo: add the image displayer for the image display of the labeled image
@@ -27,9 +29,18 @@ class SegmentationUI(QMainWindow):
         mainWidget = QWidget()
         self.setCentralWidget(mainWidget)
         outerLayout = QGridLayout()
+
+        # It is a 2x2 grid Layout which has in the top left hand corner the raw image with the controls
+        # below are potential notes, top right hand corner is the labeled image/ video with the controls of the video
+        # and bottom right hand corner is the label list of all present labels
+
+        # --------------------
+        # Raw Image - Top Left
+        # --------------------
+        imageLayout = QVBoxLayout()
         optionsLayout = QHBoxLayout()
-        videoLayout = QVBoxLayout()
-        controlLayout = QHBoxLayout()
+        # Image
+        self.image = QLabel(self)
 
         # OptionsWidget
         self.openImageFolderButton = QPushButton("Open\nLabels")
@@ -38,17 +49,45 @@ class SegmentationUI(QMainWindow):
         self.nextImageButton = QPushButton("Next\nImage")
         self.nextImageButton.setEnabled(False)
         self.nextImageButton.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
+        self.nextImageButton.clicked.connect(self.nextImage)
         self.prevImageButton = QPushButton("Previous\nImage")
         self.prevImageButton.setEnabled(False)
         self.prevImageButton.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
+        self.prevImageButton.clicked.connect(self.prevImage)
 
         optionsLayout.addWidget(self.openImageFolderButton)
-        optionsLayout.addWidget(self.prevImageButton, 1)
-        optionsLayout.addWidget(self.nextImageButton, 2)
+        optionsLayout.addWidget(self.prevImageButton)
+        optionsLayout.addWidget(self.nextImageButton)
 
-        # Video
+        # Final Layouting for this one cell
+        imageLayout.addWidget(self.image)
+        imageLayout.addLayout(optionsLayout)
+
+        # --------------------
+        # Notes - Bottom Left
+        # --------------------
+        notesLayout = QVBoxLayout()
+        notesLabel = QLabel("Type Notes in here", self)
+
+        textbox = QTextEdit(self,
+                            lineWrapMode=QTextEdit.FixedColumnWidth,
+                            lineWrapColumnOrWidth=50,
+                            placeholderText="Type your notes in here",
+                            readOnly=False,
+                            )
+        notesLayout.addWidget(notesLabel)
+        notesLayout.addWidget(textbox)
+
+        # --------------------
+        # Video/ Image - Top Right
+        # --------------------
+        labelLayout = QVBoxLayout()
+        videoControlLayout = QHBoxLayout()
+        self.label_image = QLabel(self)
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
-        videoWidget = QVideoWidget()
+        self.labelwidget = QStackedWidget()
+        self.labelwidget.addWidget(self.label_image)
+        self.labelwidget.addWidget(QVideoWidget())
         self.playButton = QPushButton()
         self.playButton.setEnabled(False)
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
@@ -72,49 +111,63 @@ class SegmentationUI(QMainWindow):
                                       QSizePolicy.Maximum)
 
         # Controls for the Video
-        controlLayout.setContentsMargins(0, 0, 0, 0)
-        controlLayout.addWidget(self.playButton)
-        controlLayout.addWidget(self.prevFrameButton)
-        controlLayout.addWidget(self.nextFrameButton)
+        videoControlLayout.setContentsMargins(0, 0, 0, 0)
+        videoControlLayout.addWidget(self.playButton)
+        videoControlLayout.addWidget(self.prevFrameButton)
+        videoControlLayout.addWidget(self.nextFrameButton)
 
-        videoLayout.addWidget(videoWidget)
-        videoLayout.setContentsMargins(0, 0, 0, 0)
-        videoLayout.addWidget(self.positionSlider)
-        videoLayout.addLayout(controlLayout)
-        videoLayout.addWidget(self.errorLabel)
+        labelLayout.setContentsMargins(0, 0, 0, 0)
+        labelLayout.addWidget(self.labelwidget)
+        labelLayout.addWidget(self.positionSlider)
+        labelLayout.addLayout(videoControlLayout)
+        labelLayout.addWidget(self.errorLabel)
 
-        # Set the layout on the application's window
-        outerLayout.addLayout(optionsLayout, 1, 0)
-        outerLayout.addWidget(videoWidget, 0, 1)
-        outerLayout.addLayout(videoLayout, 0, 1, 2, 1)
+        # --------------------
+        # Final - Put everything to the outerlayout
+        # --------------------
+        outerLayout.addLayout(imageLayout, 0, 0)
+        outerLayout.addLayout(notesLayout, 1, 0)
+        outerLayout.addLayout(labelLayout, 0, 1, 2, 1)
         mainWidget.setLayout(outerLayout)
-
-        # Set the State of the mediaplayer
-        self.mediaPlayer.setVideoOutput(videoWidget)
-        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
-        self.mediaPlayer.positionChanged.connect(self.positionChanged)
-        self.mediaPlayer.durationChanged.connect(self.durationChanged)
-        self.mediaPlayer.error.connect(self.handleError)
 
     def openFolder(self):
         labeldir = QFileDialog.getExistingDirectory(self, "Select Folder Containing Images",
                                                     QDir.homePath())
         self.basedir = pathlib.Path(labeldir).parents[0]
-        # TODO: Find Database function that generates an error or something
-        self.database = SQLiteDatabase(self.homedir, "database.db")
-
-
-        #TODO: display first labeled image of the labels folder and the corresponding raw image and video at current frame
-
-        four = 4
+        self.database = SQLiteDatabase(str(self.basedir), "database.db")
+        self.labeled_images = self.database.get_entries_of_column('labels', 'image_path')
+        self.updateImages()
+        self.nextImageButton.setEnabled(True)
+        self.prevImageButton.setEnabled(True)
+        self.playButton.setEnabled(True)
         """
         if fileName != '':
             self.mediaPlayer.setMedia(
                 QMediaContent(QUrl.fromLocalFile(fileName)))
-            self.playButton.setEnabled(True)
+            
         """
     #def exitCall(self):
         #sys.exit(app.exec_())
+
+    def updateImages(self):
+        self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
+        #label_list = LabelStruct.from_json(self.database.get_label_from_imagepath(self.labeled_images[self.image_idx]))
+        four = 4
+
+    def nextImage(self):
+        self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
+        self.updateImages()
+
+    def prevImage(self):
+        self.image_idx = (self.image_idx + -1) % len(self.labeled_images)
+        self.updateImages()
+
+    def setVideoState(self):
+        self.mediaPlayer.setVideoOutput(self.videoWidget)
+        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
+        self.mediaPlayer.positionChanged.connect(self.positionChanged)
+        self.mediaPlayer.durationChanged.connect(self.durationChanged)
+        self.mediaPlayer.error.connect(self.handleError)
 
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -173,14 +226,14 @@ class SegmentationUI(QMainWindow):
         self.setCentralWidget(wid)
 
         # Create layouts to place inside widget
-        controlLayout = QHBoxLayout()
-        controlLayout.setContentsMargins(0, 0, 0, 0)
-        controlLayout.addWidget(self.playButton)
-        controlLayout.addWidget(self.positionSlider)
+        videoControlLayout = QHBoxLayout()
+        videoControlLayout.setContentsMargins(0, 0, 0, 0)
+        videoControlLayout.addWidget(self.playButton)
+        videoControlLayout.addWidget(self.positionSlider)
 
         layout = QVBoxLayout()
         layout.addWidget(videoWidget)
-        layout.addLayout(controlLayout)
+        layout.addLayout(videoControlLayout)
         layout.addWidget(self.errorLabel)
 
         # Set widget to contain window contents

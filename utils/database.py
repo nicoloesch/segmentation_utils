@@ -3,6 +3,7 @@ import os
 import numpy as np
 from typing import Union, List
 import pickle
+import sys
 
 # NOTE: it is not best practice with the with statements and directly use a connection but it is also not forbidden and
 # makes the code nice and clean as the with statement terminates the connection to the database after execution
@@ -79,15 +80,38 @@ class LabelStruct:
     https://stackoverflow.com/questions/3768895/how-to-make-a-class-json-serializable
     https://stackoverflow.com/questions/6578986/how-to-convert-json-data-into-a-python-object
     """
-    def __init__(self, label_name: str, shape_type: str, coordinates: np.array):
+    def __init__(self,
+                 label_name: str,
+                 points: np.array,
+                 group_id: None,
+                 shape_type: str,
+                 flags: None):
         self.label_name = label_name
         self.shape_type = shape_type
-        self.coordinates = coordinates
+        self.points = points
+        self.group_id = group_id
+        self.flags = flags
 
     def __repr__(self):
-        rep = f"{self.label_name} ({self.shape_type.capitalize()}, {self.coordinates.shape[1]} edges)"
+        rep = f"{self.label_name} ({self.shape_type.capitalize()}, {self.points.shape[0]} vertices)"
         return rep
 
+    @staticmethod
+    def from_json(json_list):
+        """Create Labelstruct from JSON dictionary.
+        """
+        return [LabelStruct(label_name=json_dict['label'],
+                            points=np.asarray(json_dict['points']),
+                            group_id=json_dict['group_id'],
+                            shape_type=json_dict['shape_type'],
+                            flags=json_dict['flags']) for json_dict in json_list]
+
+    def to_json(self):
+        return {'label': self.label_name,
+                'points': self.points.tolist(),
+                'group_id': self.group_id,
+                'shape_type': self.shape_type,
+                'flags': self.flags}
 
 class SQLiteDatabase:
     def __init__(self, database_path: str, database_name: str):
@@ -116,7 +140,7 @@ class SQLiteDatabase:
         with self.connection:
             self.connection.execute(CREATE_LABEL_TABLE)
 
-    def add_label(self, image_path_rel: str, list_labels: List[LabelStruct]) -> bool:
+    def add_label(self, image_path_rel: str, list_labels: List[dict]) -> bool:
         """ Add a label to existing label table
 
             :param str image_path_rel: relative path of the image
@@ -218,6 +242,10 @@ class SQLiteDatabase:
                 return check_for_bytes(ret)
         except sqlite3.OperationalError as err:
             print(err)
+
+    def get_label_from_imagepath(self, imagepath: str):
+        ret = self.connection.execute(f"SELECT label_list FROM labels WHERE image_path = ?;", (imagepath,)).fetchall()
+        return check_for_bytes(ret)
 
     def get_entries_of_column(self, table_name: str, column_name: str):
         """ Get all the entries within the table by the specifier of the column
@@ -374,6 +402,8 @@ def check_for_bytes(lst: List[tuple]) -> Union[List[list], list]:
                     lst[_list_idx][_tuple_idx] = pickle.loads(_value)
                 else:
                     continue
+    if len(lst) == 1:
+        lst = lst[0]
     return lst
 
 
@@ -383,5 +413,7 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 
 if __name__ == "__main__":
     db = SQLiteDatabase('/home/nico/isys/data', "database.db")
-    db.delete_table("images")
+    image_path = 'images/video0001_0001.png'
+    all = db.get_label_from_imagepath(image_path)
+    all_2 = LabelStruct.from_json(all)
     four = 4
