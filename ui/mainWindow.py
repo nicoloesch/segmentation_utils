@@ -68,9 +68,9 @@ class SegmentationUI(QMainWindow):
         self.image = QLabel(self)
 
         # OptionsWidget
-        self.openImageFolderButton = QPushButton("Open\nLabels")
-        self.openImageFolderButton.setIcon(self.style().standardIcon(QStyle.SP_DirIcon))
-        self.openImageFolderButton.clicked.connect(self.openFolder)
+        self.openDatabase = QPushButton("Open\nDatabase")
+        self.openDatabase.setIcon(self.style().standardIcon(QStyle.SP_DirIcon))
+        self.openDatabase.clicked.connect(self.openFolder)
         self.nextImageButton = QPushButton("Next\nImage")
         self.nextImageButton.setEnabled(False)
         self.nextImageButton.setIcon(self.style().standardIcon(QStyle.SP_ArrowRight))
@@ -80,7 +80,7 @@ class SegmentationUI(QMainWindow):
         self.prevImageButton.setIcon(self.style().standardIcon(QStyle.SP_ArrowLeft))
         self.prevImageButton.clicked.connect(self.prevImage)
 
-        optionsLayout.addWidget(self.openImageFolderButton)
+        optionsLayout.addWidget(self.openDatabase)
         optionsLayout.addWidget(self.prevImageButton)
         optionsLayout.addWidget(self.nextImageButton)
 
@@ -169,10 +169,14 @@ class SegmentationUI(QMainWindow):
         mainWidget.setLayout(outerLayout)
 
     def openFolder(self):
-        labeldir = QFileDialog.getExistingDirectory(self, "Select Folder Containing Images",
-                                                    QDir.homePath())
-        self.basedir = pathlib.Path(labeldir).parents[0]
-        self.database = SQLiteDatabase(str(self.basedir), "database.db")
+        database, _ = QFileDialog.getOpenFileName(self,
+                                                  caption="Select Database",
+                                                  directory=QDir.homePath(),
+                                                  filter="Database (*.db)",
+                                                  options=QFileDialog.DontUseNativeDialog)
+        self.basedir = pathlib.Path(database).parents[0]
+        self.database = SQLiteDatabase(str(self.basedir), pathlib.Path(database).name)
+        print(database)
         # this makes sure only labeled images can be displayed as they are the only ones being in the SQL database
         self.labeled_images = self.database.get_entries_of_column('labels', 'image_path')
         self.updateImages()
@@ -212,13 +216,13 @@ class SegmentationUI(QMainWindow):
             self.labelwidget.setCurrentWidget(self.labelImage)
         self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
         self.mediaPlayer.stop()
-        self.setVideoControls(False)
+        self.setSkipButtons(False)
         self.updateImages()
 
     def prevImage(self):
         self.image_idx = (self.image_idx + -1) % len(self.labeled_images)
         self.mediaPlayer.stop()
-        self.setVideoControls(False)
+        self.setSkipButtons(False)
         self.updateImages()
 
     def nextFrame(self):
@@ -270,8 +274,6 @@ class SegmentationUI(QMainWindow):
         # NOTE: idk if that is right...
         if state == QMediaPlayer.EndOfMedia:
             self.setPosition(self._begin)
-        elif state == QMediaPlayer.LoadedMedia:
-            self.setStoppingPosition()
 
     def positionChanged(self, position):
         self.positionSlider.setValue(position)
