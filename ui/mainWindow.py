@@ -4,8 +4,7 @@ from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit,
                              QApplication, QFileDialog, QHBoxLayout, QLabel, QStackedWidget,
                              QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QGridLayout)
-from PyQt5.QtGui import QIcon, QPixmap, QPolygonF, QPainter, QColor, QBrush, QPen
-
+from PyQt5.QtGui import QPixmap, QPolygonF
 import sys
 import pathlib
 import base64
@@ -30,7 +29,7 @@ COLOR_LIST = [Qt.red,
               Qt.darkGreen,
               Qt.darkMagenta]
 
-
+# TODO: replace with open database rather than the images as the databse contains all necessary information
 class SegmentationUI(QMainWindow):
     def __init__(self, parent=None):
         super().__init__()
@@ -42,10 +41,16 @@ class SegmentationUI(QMainWindow):
         self.basedir = None
         self.labeled_images = None
         self.image_idx = 0
+        self.videoRangeMS = 2000
+        self._begin = None
+        self._end = None
+        self._videoDuration = None
+        self.fps = 25.0
+        self.frameRate = (1.0/self.fps)*1000.0  # duration of one frame in ms
+        self.labelFrame = None
         self.label_names = {"_background_": 0}  # TODO: remove that and replace by table in SQL
 
         # Layouting
-        # Todo: add option/ button to go back to the labeled image instead of the video
         mainWidget = QWidget()
         self.setCentralWidget(mainWidget)
         outerLayout = QGridLayout()
@@ -103,11 +108,12 @@ class SegmentationUI(QMainWindow):
         # --------------------
         labelLayout = QVBoxLayout()
         videoControlLayout = QHBoxLayout()
-        self.label_image = QLabel(self)
+        self.labelImage = QLabel(self)
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
         self.labelwidget = QStackedWidget()
-        self.labelwidget.addWidget(self.label_image)
-        self.labelwidget.addWidget(QVideoWidget())
+        self.labelwidget.addWidget(self.labelImage)
+        self.labelVideo = QVideoWidget()
+        self.labelwidget.addWidget(self.labelVideo)
         self.playButton = QPushButton()
         self.playButton.setEnabled(False)
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
@@ -116,20 +122,25 @@ class SegmentationUI(QMainWindow):
         self.nextFrameButton = QPushButton()
         self.nextFrameButton.setEnabled(False)
         self.nextFrameButton.setIcon(self.style().standardIcon(QStyle.SP_MediaSeekForward))
+        self.nextFrameButton.clicked.connect(self.nextFrame)
 
         self.prevFrameButton = QPushButton()
         self.prevFrameButton.setEnabled(False)
         self.prevFrameButton.setIcon(self.style().standardIcon(QStyle.SP_MediaSeekBackward))
+        self.prevFrameButton.clicked.connect(self.prevFrame)
 
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 0)
         self.positionSlider.sliderMoved.connect(self.setPosition)
 
-        self.displayLabelButton = QPushButton("Display\nLabel")
+        self.displayLabelButton = QPushButton("Label")
         self.displayLabelButton.setEnabled(False)
+        self.displayLabelButton.clicked.connect(self.displayLabel)
 
-        #TODO: call painter somewhere else
-        self._painter = QPainter()
+        self.initVideo()
+
+        # TODO: Painter for drawing the raw polygons - has to be called somewhere else
+        # self._painter = QPainter()
 
         # Error Widget
         self.errorLabel = QLabel()
@@ -141,6 +152,7 @@ class SegmentationUI(QMainWindow):
         videoControlLayout.addWidget(self.playButton)
         videoControlLayout.addWidget(self.prevFrameButton)
         videoControlLayout.addWidget(self.nextFrameButton)
+        videoControlLayout.addWidget(self.displayLabelButton)
 
         labelLayout.setContentsMargins(0, 0, 0, 0)
         labelLayout.addWidget(self.labelwidget)
@@ -161,29 +173,27 @@ class SegmentationUI(QMainWindow):
                                                     QDir.homePath())
         self.basedir = pathlib.Path(labeldir).parents[0]
         self.database = SQLiteDatabase(str(self.basedir), "database.db")
+        # this makes sure only labeled images can be displayed as they are the only ones being in the SQL database
         self.labeled_images = self.database.get_entries_of_column('labels', 'image_path')
         self.updateImages()
         self.nextImageButton.setEnabled(True)
         self.prevImageButton.setEnabled(True)
         self.playButton.setEnabled(True)
-        """
-        if fileName != '':
-            self.mediaPlayer.setMedia(
-                QMediaContent(QUrl.fromLocalFile(fileName)))
-            
-        """
 
     #def exitCall(self):
         #sys.exit(app.exec_())
 
     def updateImages(self):
         self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
-        self.label_image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
-        label_list = LabelStruct.from_json(self.database.get_label_from_imagepath(self.labeled_images[self.image_idx]))
-        self.drawLabel(label_list)
+        # TODO: replace with calls to the SQL database rather than the files themselves
+        path_to_labelled = self.basedir / 'labels/SegmentationClassVisualization'
+        filename_labeled = pathlib.Path(self.labeled_images[self.image_idx]).stem + '.jpg'
+        self.labelImage.setPixmap(QPixmap(str(path_to_labelled / filename_labeled)))
+        # label_list = LabelStruct.from_json(self.database.get_label_from_imagepath(self.labeled_images[self.image_idx]))
 
+    """
     def drawLabel(self, labels: List[LabelStruct]):
-        # TODO: so far only polygons can be drawn
+        # TODO: Polygon drawer
         imagePath = str(self.basedir / self.labeled_images[self.image_idx])
         s = []
         for _label in labels:
@@ -195,135 +205,116 @@ class SegmentationUI(QMainWindow):
             self.PainterInstance.drawPolygon(points)
             # TODO: Canvas Class as in labelme
             #  https://github.com/wkentaro/labelme/blob/115816d3e47c80f64e843085fb09cf878ce19dfa/labelme/widgets/canvas.py
+    """
 
-            
     def nextImage(self):
+        if self.labelwidget.currentWidget() == self.labelVideo:
+            self.labelwidget.setCurrentWidget(self.labelImage)
         self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
+        self.mediaPlayer.stop()
+        self.setVideoControls(False)
         self.updateImages()
 
     def prevImage(self):
         self.image_idx = (self.image_idx + -1) % len(self.labeled_images)
+        self.mediaPlayer.stop()
+        self.setVideoControls(False)
         self.updateImages()
 
-    def setVideoState(self):
-        self.mediaPlayer.setVideoOutput(self.videoWidget)
-        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
+    def nextFrame(self):
+        self.setPosition(self.mediaPlayer.position() + self.frameRate)
+
+    def prevFrame(self):
+        self.setPosition(self.mediaPlayer.position() - self.frameRate)
+
+    def initVideo(self):
+        self.mediaPlayer.mediaStatusChanged.connect(self.mediaStateChanged)
+        self.mediaPlayer.stateChanged.connect(self.stateChanged)
         self.mediaPlayer.positionChanged.connect(self.positionChanged)
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
 
     def play(self):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+        if self.labelwidget.currentWidget() == self.labelImage:
+            # display the video Widget if currently the label image is displayed
+            self.labelwidget.setCurrentWidget(self.labelVideo)
+
+        if self.mediaPlayer.state() == QMediaPlayer.StoppedState:
+            self.setVideo()
+            self.mediaPlayer.play()
+            self.displayLabelButton.setEnabled(True)
+        elif self.mediaPlayer.state() == QMediaPlayer.PausedState:
+            # if the player has been in the paused state, the video starts playing again
+            self.mediaPlayer.play()
+            self.displayLabelButton.setEnabled(True)
+            self.setSkipButtons(False)
+        elif self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+            # if the video has been playing (and the pause button got pressed) the video will pause
+            self.displayLabelButton.setEnabled(True)
+            self.setSkipButtons(True)
             self.mediaPlayer.pause()
         else:
-            self.mediaPlayer.play()
+            pass
 
-    def mediaStateChanged(self, state):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+    def stateChanged(self, state):
+        if state == QMediaPlayer.PlayingState:
             self.playButton.setIcon(
                 self.style().standardIcon(QStyle.SP_MediaPause))
-        else:
+        elif state == QMediaPlayer.PausedState or state == QMediaPlayer.StoppedState:
             self.playButton.setIcon(
                 self.style().standardIcon(QStyle.SP_MediaPlay))
-
-    def positionChanged(self, position):
-        self.positionSlider.setValue(position)
-
-    def durationChanged(self, duration):
-        self.positionSlider.setRange(0, duration)
-
-    def setPosition(self, position):
-        self.mediaPlayer.setPosition(position)
-
-    def handleError(self):
-        self.playButton.setEnabled(False)
-        self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
-
-
-        """
-        self.errorLabel = QLabel()
-        self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Maximum)
-
-        # Create new action
-        openAction = QAction(QIcon('open.png'), '&Open', self)
-        openAction.setShortcut('Ctrl+O')
-        openAction.setStatusTip('Open movie')
-        openAction.triggered.connect(self.openFile)
-
-        # Create exit action
-        exitAction = QAction(QIcon('exit.png'), '&Exit', self)
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.exitCall)
-
-        # Create menu bar and add action
-        menuBar = self.menuBar()
-        fileMenu = menuBar.addMenu('&File')
-        #fileMenu.addAction(newAction)
-        fileMenu.addAction(openAction)
-        fileMenu.addAction(exitAction)
-
-        # Create a widget for window contents
-        wid = QWidget(self)
-        self.setCentralWidget(wid)
-
-        # Create layouts to place inside widget
-        videoControlLayout = QHBoxLayout()
-        videoControlLayout.setContentsMargins(0, 0, 0, 0)
-        videoControlLayout.addWidget(self.playButton)
-        videoControlLayout.addWidget(self.positionSlider)
-
-        layout = QVBoxLayout()
-        layout.addWidget(videoWidget)
-        layout.addLayout(videoControlLayout)
-        layout.addWidget(self.errorLabel)
-
-        # Set widget to contain window contents
-        wid.setLayout(layout)
-
-        self.mediaPlayer.setVideoOutput(videoWidget)
-        self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
-        self.mediaPlayer.positionChanged.connect(self.positionChanged)
-        self.mediaPlayer.durationChanged.connect(self.durationChanged)
-        self.mediaPlayer.error.connect(self.handleError)
-
-    def openFile(self):
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
-                QDir.homePath())
-
-        if fileName != '':
-            self.mediaPlayer.setMedia(
-                    QMediaContent(QUrl.fromLocalFile(fileName)))
-            self.playButton.setEnabled(True)
-
-    def exitCall(self):
-        sys.exit(app.exec_())
-
-    def play(self):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.mediaPlayer.pause()
         else:
-            self.mediaPlayer.play()
+            pass
 
     def mediaStateChanged(self, state):
-        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playButton.setIcon(
-                    self.style().standardIcon(QStyle.SP_MediaPause))
-        else:
-            self.playButton.setIcon(
-                    self.style().standardIcon(QStyle.SP_MediaPlay))
+        # NOTE: idk if that is right...
+        if state == QMediaPlayer.EndOfMedia:
+            self.setPosition(self._begin)
+        elif state == QMediaPlayer.LoadedMedia:
+            self.setStoppingPosition()
 
     def positionChanged(self, position):
         self.positionSlider.setValue(position)
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+            if position > self._end or position < self._begin:
+                self.setPosition(self._begin)
 
     def durationChanged(self, duration):
-        self.positionSlider.setRange(0, duration)
+        self.positionSlider.setRange(self._begin, self._end)
 
     def setPosition(self, position):
         self.mediaPlayer.setPosition(position)
 
+    def setStartingPosition(self):
+        self._begin = max(0, self.frame_to_ms(self.labelFrame) - self.videoRangeMS / 2.0)
+        self._end = min(self._videoDuration, self.frame_to_ms(self.labelFrame) + self.videoRangeMS / 2.0)
+
+    def setVideo(self):
+        # TODO: move to init?
+        self.mediaPlayer.setVideoOutput(self.labelVideo)
+        video, self.labelFrame, self._videoDuration = self.database.get_video_from_image(self.labeled_images[self.image_idx])
+        self.mediaPlayer.setMedia(
+            QMediaContent(QUrl.fromLocalFile(str(self.basedir / video))))
+        self.setStartingPosition()
+        self.setPosition(self._begin)
+        self.playButton.setEnabled(True)
+
     def handleError(self):
         self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
-"""
+
+    def setSkipButtons(self, value: bool):
+        self.prevFrameButton.setEnabled(value)
+        self.nextFrameButton.setEnabled(value)
+
+    def displayLabel(self):
+        if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
+            self.mediaPlayer.pause()
+        self.labelwidget.setCurrentWidget(self.labelImage)
+        self.setSkipButtons(False)
+        self.displayLabelButton.setEnabled(False)
+        self.updateImages()
+
+    @staticmethod
+    def frame_to_ms(frame_number: int, fps: int = 25):
+        return (frame_number/fps) * 1000.0

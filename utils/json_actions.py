@@ -27,6 +27,12 @@ def convert_json_to_sql(image_dir: str, database_name: str = "database.db"):
         except ValueError:
             pass
 
+def find_and_replace():
+    pass
+
+def remove_category():
+    pass
+
 
 if __name__ == "__main__":
     main()

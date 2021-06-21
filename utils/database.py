@@ -17,8 +17,9 @@ CREATE_VIDEOS_TABLE = """
     id INTEGER PRIMARY KEY,
     origin TEXT NOT NULL,
     dest TEXT NOT NULL,
+    duration INTEGER NOT NULL,
     UNIQUE (origin));"""
-INSERT_VIDEO = "INSERT INTO videos (origin, dest) VALUES (?, ?);"
+INSERT_VIDEO = "INSERT INTO videos (origin, dest, duration) VALUES (?, ?, ?);"
 
 CREATE_IMAGES_TABLE = """
     CREATE TABLE IF NOT EXISTS images (
@@ -113,6 +114,7 @@ class LabelStruct:
                 'shape_type': self.shape_type,
                 'flags': self.flags}
 
+
 class SQLiteDatabase:
     def __init__(self, database_path: str, database_name: str):
         """Connect to database as initialization
@@ -159,16 +161,17 @@ class SQLiteDatabase:
             print(f"Duplicate video with same origin ({image_path_rel}) found. Skipping file")
             return False
 
-    def add_video(self, origin_rel: str, dest_rel: str) -> bool:
+    def add_video(self, origin_rel: str, dest_rel: str, duration: int) -> bool:
         """ Add a video entry to existing table if the origin_name is not already included in the database
 
             :param str origin_rel: relative origin of video
             :param str dest_rel: relative destination
+            :param int duration: duration of the video necessary for PyQT
             :return bool: True if successful, false otherwise
         """
         try:
             with self.connection:
-                self.connection.execute(INSERT_VIDEO, (origin_rel, dest_rel))
+                self.connection.execute(INSERT_VIDEO, (origin_rel, dest_rel, duration))
             return True
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
@@ -370,6 +373,32 @@ class SQLiteDatabase:
         with self.connection:
             self.connection.execute(f"""ALTER TABLE {old} RENAME TO {new}""")
 
+    def get_video_from_image(self, image_name: str):
+        try:
+            with self.connection:
+                ret = self.connection.execute(f"SELECT * FROM images WHERE image_path = ?;", (image_name,)).fetchone()
+                duration = self.get_entries_specific('videos', 'dest', ret[1])[3]
+                return ret[1], ret[3], duration
+        except sqlite3.OperationalError as err:
+            print(err)
+
+    def update_entry(self, table_name: str, column_name_search: str, keyword: str, column_name_replace: str, value_new: str):
+        """ Update a single entry based on the old value in the column. Is most likely similar to
+        replace_specific and change specific entry
+
+            :param str table_name: name of the table where to alter the entry
+            :param int keyword: keyword to search in column_name_search
+            :param str column_name_search: name of the column the searched keyword is in
+            :param str column_name_replace: column where it should be replaced
+            :param str value_new: new value to replace the old with
+            """
+        try:
+            with self.connection:
+                # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
+                self.connection.execute(f"""UPDATE {table_name} SET {column_name_replace} = ? WHERE {column_name_search} = ?;""",
+                                        (value_new, keyword))
+        except sqlite3.OperationalError as err:
+            print(err)
 
 # TODO: generate @staticmethod within the class if not necessary somewhere else
 def get_filename_from_path(path: str):
@@ -412,8 +441,4 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 
 
 if __name__ == "__main__":
-    db = SQLiteDatabase('/home/nico/isys/data', "database.db")
-    image_path = 'images/video0001_0001.png'
-    all = db.get_label_from_imagepath(image_path)
-    all_2 = LabelStruct.from_json(all)
     four = 4

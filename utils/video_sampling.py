@@ -2,7 +2,7 @@ from typing import List
 import ffmpeg
 import os
 from database import SQLiteDatabase, ImageSample
-
+import subprocess
 
 def get_frame(fps: int,
               h: int,
@@ -73,9 +73,25 @@ def extract_frames(frame_dict: dict,
             four = 4
 
 
-# TODO: Parsing based on individual key frames without information about it
-#  information comes from the segmentation rather than the sampling
-#   potentially also image viewer in pyqt with a button to extract exactly that frame
+def add_duration_to_sql(base_path: str = "/home/nico/isys/data",
+                        database_name: str = "database.db"):
+    db = SQLiteDatabase(base_path, database_name)
+
+    for video in os.listdir(os.path.join(base_path, "converted")):
+        duration = get_duration(os.path.join(base_path, "converted", video)) * 1000.0
+        db.update_entry('videos', 'dest', "converted/" + str(video), 'duration', duration)
+
+
+def get_duration(file):
+    """Get the duration of a video using ffprobe."""
+    cmd = 'ffprobe -i {} -show_entries format=duration -v quiet -of csv="p=0"'.format(file)
+    output = subprocess.check_output(
+        cmd,
+        shell=True,  # Let this run in the shell
+        stderr=subprocess.STDOUT
+    )
+    # return round(float(output))  # ugly, but rounds your seconds up or down
+    return float(output)
 
 frame_dictionary = \
     {
@@ -434,5 +450,5 @@ frame_dictionary = \
                           ],
      }
 
-frame_no = get_frame(25,0,2,13,360)
-print(frame_no)
+add_duration_to_sql()
+
