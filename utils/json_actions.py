@@ -1,4 +1,5 @@
 import os
+import pickle
 import sys
 import json
 import glob
@@ -8,12 +9,13 @@ from database import SQLiteDatabase
 
 def main():
     four = 4
-    basedir = "/home/nico/isys/data/images"
-    convert_json_to_sql(basedir)
+    label_dir = "/home/nico/isys/data/images"
+    database_path = "/home/nico/isys/data/test"
+    four = 4
 
 
-def convert_json_to_sql(image_dir: str, database_name: str = "database.db"):
-    database = SQLiteDatabase(str(Path(image_dir).parents[0]), database_name)
+def convert_json_to_sql(image_dir: str, database_dir: str, database_name: str = "database.db"):
+    database = SQLiteDatabase(database_dir, database_name)
     database.create_labels_table()
     for idx, file in enumerate(sorted(glob.glob(os.path.join(image_dir, "*.json")))):
         try:
@@ -27,11 +29,25 @@ def convert_json_to_sql(image_dir: str, database_name: str = "database.db"):
         except ValueError:
             pass
 
-def find_and_replace():
-    pass
 
-def remove_category():
-    pass
+def remove_label_category(database_path: str, label_dir: str, category: str, database_name: str = "database.db"):
+    database = SQLiteDatabase(database_path, database_name)
+    for idx, file in enumerate(sorted(glob.glob(os.path.join(label_dir, "*.json")))):
+        with open(file, 'r') as _file:
+            _json = json.load(_file)
+        for _idx, _shape in enumerate(_json['shapes']):
+            if _shape['label'] == category:
+                _json['shapes'].pop(_idx)
+            else:
+                continue
+            four = 4
+        with open(file, 'w') as data_file:
+            # Save file to json again - DEPRECATED as soon as i work with full datbase support
+            json.dump(_json, data_file)
+            label_list = [_label for _label in _json['shapes']]
+            filename = "images/" + os.path.basename(file).replace(".json", ".png")
+            database.update_entry("labels", "image_path", filename, "label_list", pickle.dumps(label_list))
+            print(f"Processed Label {idx + 1}/{len(glob.glob(os.path.join(label_dir, '*.json')))}")
 
 
 if __name__ == "__main__":
