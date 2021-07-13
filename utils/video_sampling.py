@@ -53,7 +53,7 @@ def extract_frames(frame_dict: dict,
         # combine to relative path
         video_name = os.path.join("converted", video_name)
         original_path = os.path.join(base_path, video_name)
-        database = SQLiteDatabase(base_path, database_name)
+        database = SQLiteDatabase(os.path.join(base_path, database_name))
         database.create_images_table()
         for idx, frame in enumerate(frame_list):
             num = database.get_num_entries_specific(table_name="images",
@@ -75,7 +75,7 @@ def extract_frames(frame_dict: dict,
 
 def add_duration_to_sql(base_path: str = "/home/nico/isys/data",
                         database_name: str = "database.db"):
-    db = SQLiteDatabase(base_path, database_name)
+    db = SQLiteDatabase(os.path.join(base_path, database_name))
 
     for video in os.listdir(os.path.join(base_path, "converted")):
         duration = get_duration(os.path.join(base_path, "converted", video)) * 1000.0
@@ -92,6 +92,7 @@ def get_duration(file):
     )
     # return round(float(output))  # ugly, but rounds your seconds up or down
     return float(output)
+
 
 frame_dictionary = \
     {
@@ -448,7 +449,117 @@ frame_dictionary = \
                           get_frame(fps=25, h=0, m=1, s=5, ms=760),
                           get_frame(fps=25, h=0, m=1, s=26, ms=520),
                           ],
+        "video0024.mp4": [get_frame(fps=25, h=0, m=0, s=4, ms=600),
+                          get_frame(fps=25, h=0, m=0, s=8, ms=640),
+                          get_frame(fps=25, h=0, m=0, s=15, ms=200),
+                          get_frame(fps=25, h=0, m=0, s=19, ms=360),
+                          get_frame(fps=25, h=0, m=0, s=27, ms=640),
+                          get_frame(fps=25, h=0, m=0, s=39, ms=440),
+                          get_frame(fps=25, h=0, m=0, s=44, ms=800),
+                          get_frame(fps=25, h=0, m=0, s=47, ms=80),
+                          get_frame(fps=25, h=0, m=0, s=52, ms=920),
+                          get_frame(fps=25, h=0, m=1, s=7, ms=520),
+                          get_frame(fps=25, h=0, m=1, s=18, ms=840)
+                          ],
+        "video0025.mp4": [get_frame(fps=25, h=0, m=0, s=6, ms=200),
+                          get_frame(fps=25, h=0, m=0, s=43, ms=240),
+                          get_frame(fps=25, h=0, m=0, s=51, ms=200),
+                          get_frame(fps=25, h=0, m=1, s=13, ms=200),
+                          get_frame(fps=25, h=0, m=1, s=26, ms=320),
+                          get_frame(fps=25, h=0, m=1, s=45, ms=200),
+                          get_frame(fps=25, h=0, m=1, s=50, ms=600),
+                          get_frame(fps=25, h=0, m=2, s=41, ms=400),
+                          get_frame(fps=25, h=0, m=4, s=8, ms=320),
+                          get_frame(fps=25, h=0, m=4, s=5, ms=960),
+                          get_frame(fps=25, h=0, m=4, s=24, ms=280),
+                          get_frame(fps=25, h=0, m=4, s=33, ms=520),
+                          get_frame(fps=25, h=0, m=5, s=9, ms=320),
+                          get_frame(fps=25, h=0, m=5, s=19, ms=720),
+                          ],
+        "video0026.mp4": [get_frame(fps=25, h=0, m=0, s=12, ms=40),
+                          get_frame(fps=25, h=0, m=0, s=20, ms=0),
+                          get_frame(fps=25, h=0, m=0, s=27, ms=80),
+                          get_frame(fps=25, h=0, m=0, s=33, ms=400),
+                          get_frame(fps=25, h=0, m=0, s=40, ms=120),
+                          get_frame(fps=25, h=0, m=0, s=56, ms=240),
+                          get_frame(fps=25, h=0, m=1, s=21, ms=0),
+                          get_frame(fps=25, h=0, m=1, s=29, ms=400),
+                          get_frame(fps=25, h=0, m=1, s=31, ms=760),
+                          ],
+        "video0027.mp4": [get_frame(fps=25, h=0, m=0, s=0, ms=80),
+                          get_frame(fps=25, h=0, m=0, s=2, ms=920),
+                          get_frame(fps=25, h=0, m=0, s=4, ms=680),
+                          get_frame(fps=25, h=0, m=0, s=8, ms=320),
+                          get_frame(fps=25, h=0, m=0, s=13, ms=120),
+                          get_frame(fps=25, h=0, m=0, s=16, ms=840),
+                          get_frame(fps=25, h=0, m=0, s=23, ms=360),
+                          get_frame(fps=25, h=0, m=0, s=32, ms=680),
+                          get_frame(fps=25, h=0, m=0, s=43, ms=800),
+                          get_frame(fps=25, h=0, m=0, s=49, ms=640),
+                          get_frame(fps=25, h=0, m=1, s=10, ms=0),
+                          get_frame(fps=25, h=0, m=1, s=20, ms=800),
+                          get_frame(fps=25, h=0, m=1, s=39, ms=680),
+                          get_frame(fps=25, h=0, m=2, s=23, ms=600),
+                          get_frame(fps=25, h=0, m=2, s=36, ms=920),
+                          get_frame(fps=25, h=0, m=2, s=42, ms=520),
+                          get_frame(fps=25, h=0, m=2, s=50, ms=160),
+                          get_frame(fps=25, h=0, m=2, s=58, ms=80),
+                          get_frame(fps=25, h=0, m=3, s=1, ms=760),
+                          get_frame(fps=25, h=0, m=3, s=5, ms=720),
+                          get_frame(fps=25, h=0, m=3, s=16, ms=400),
+                          get_frame(fps=25, h=0, m=3, s=23, ms=200),
+                          get_frame(fps=25, h=0, m=3, s=26, ms=200),
+                          get_frame(fps=25, h=0, m=3, s=34, ms=440),
+                          get_frame(fps=25, h=0, m=3, s=51, ms=600),
+                          get_frame(fps=25, h=0, m=3, s=55, ms=760),
+                          get_frame(fps=25, h=0, m=4, s=5, ms=120),
+                          get_frame(fps=25, h=0, m=4, s=29, ms=160),
+                          get_frame(fps=25, h=0, m=4, s=41, ms=520),
+                          get_frame(fps=25, h=0, m=5, s=4, ms=800),
+                          get_frame(fps=25, h=0, m=5, s=18, ms=320),
+                          get_frame(fps=25, h=0, m=6, s=2, ms=240),
+                          get_frame(fps=25, h=0, m=6, s=14, ms=960),
+                          get_frame(fps=25, h=0, m=6, s=58, ms=680),
+                          get_frame(fps=25, h=0, m=7, s=36, ms=520),
+                          get_frame(fps=25, h=0, m=8, s=11, ms=640),
+                          get_frame(fps=25, h=0, m=8, s=37, ms=280),
+                          get_frame(fps=25, h=0, m=8, s=57, ms=680),
+                          get_frame(fps=25, h=0, m=9, s=14, ms=840),
+                          get_frame(fps=25, h=0, m=9, s=31, ms=440),
+                          get_frame(fps=25, h=0, m=9, s=50, ms=960),
+                          get_frame(fps=25, h=0, m=10, s=34, ms=0),
+                          get_frame(fps=25, h=0, m=11, s=8, ms=600),
+                          get_frame(fps=25, h=0, m=12, s=0, ms=720),
+                          get_frame(fps=25, h=0, m=12, s=8, ms=280),
+                          get_frame(fps=25, h=0, m=12, s=50, ms=360)
+                          ],
+        "video0028.mp4": [get_frame(fps=25, h=0, m=0, s=3, ms=360),
+                          get_frame(fps=25, h=0, m=0, s=35, ms=200),
+                          get_frame(fps=25, h=0, m=1, s=21, ms=200),
+                          get_frame(fps=25, h=0, m=2, s=19, ms=40),
+                          get_frame(fps=25, h=0, m=2, s=43, ms=640),
+                          get_frame(fps=25, h=0, m=2, s=53, ms=720),
+                          get_frame(fps=25, h=0, m=3, s=18, ms=760),
+                          get_frame(fps=25, h=0, m=3, s=33, ms=760),
+                          get_frame(fps=25, h=0, m=4, s=28, ms=560),
+                          get_frame(fps=25, h=0, m=4, s=47, ms=360),
+                          get_frame(fps=25, h=0, m=5, s=24, ms=680),
+                          get_frame(fps=25, h=0, m=6, s=59, ms=920),
+                          get_frame(fps=25, h=0, m=7, s=52, ms=720),
+                          get_frame(fps=25, h=0, m=9, s=26, ms=960),
+                          get_frame(fps=25, h=0, m=10, s=11, ms=120),
+                          get_frame(fps=25, h=0, m=10, s=37, ms=760),
+                          get_frame(fps=25, h=0, m=12, s=0, ms=720),
+                          get_frame(fps=25, h=0, m=12, s=58, ms=0),
+                          ],
+        "video0029.mp4": [get_frame(fps=25, h=0, m=0, s=27, ms=600),
+                          get_frame(fps=25, h=0, m=1, s=8, ms=40),
+                          ],
+        "video0030.mp4": [get_frame(fps=25, h=0, m=0, s=22, ms=40),
+                          get_frame(fps=25, h=0, m=0, s=40, ms=720),
+                          get_frame(fps=25, h=0, m=0, s=48, ms=480),
+                          ],
      }
 
-add_duration_to_sql()
+extract_frames(frame_dictionary)
 

@@ -10,12 +10,14 @@ from database import SQLiteDatabase
 def main():
     four = 4
     label_dir = "/home/nico/isys/data/images"
-    database_path = "/home/nico/isys/data/test"
-    four = 4
+    database_path = "/home/nico/isys/data/test/database.db"
+    convert_json_to_sql(label_dir, database_path)
+    database = SQLiteDatabase(database_path)
+    database.get_classes()
 
 
-def convert_json_to_sql(image_dir: str, database_dir: str, database_name: str = "database.db"):
-    database = SQLiteDatabase(database_dir, database_name)
+def convert_json_to_sql(image_dir: str, database_path: str):
+    database = SQLiteDatabase(database_path)
     database.create_labels_table()
     for idx, file in enumerate(sorted(glob.glob(os.path.join(image_dir, "*.json")))):
         try:
@@ -30,8 +32,8 @@ def convert_json_to_sql(image_dir: str, database_dir: str, database_name: str = 
             pass
 
 
-def remove_label_category(database_path: str, label_dir: str, category: str, database_name: str = "database.db"):
-    database = SQLiteDatabase(database_path, database_name)
+def remove_label_category(database_path: str, label_dir: str, category: str):
+    database = SQLiteDatabase(database_path)
     for idx, file in enumerate(sorted(glob.glob(os.path.join(label_dir, "*.json")))):
         with open(file, 'r') as _file:
             _json = json.load(_file)
@@ -42,7 +44,7 @@ def remove_label_category(database_path: str, label_dir: str, category: str, dat
                 continue
             four = 4
         with open(file, 'w') as data_file:
-            # Save file to json again - DEPRECATED as soon as i work with full datbase support
+            # Save file to json again - DEPRECATED as soon as i work with full database support
             json.dump(_json, data_file)
             label_list = [_label for _label in _json['shapes']]
             filename = "images/" + os.path.basename(file).replace(".json", ".png")

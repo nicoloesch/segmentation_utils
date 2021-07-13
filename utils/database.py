@@ -116,14 +116,12 @@ class LabelStruct:
 
 
 class SQLiteDatabase:
-    def __init__(self, database_path: str, database_name: str):
+    def __init__(self, database_path: str):
         """Connect to database as initialization
 
             :param database_path: path to the database
-            :param database_name: name of the database
             """
-        self.connection = sqlite3.connect(os.path.join(database_path,database_name))
-        self.database = database_name
+        self.connection = sqlite3.connect(database_path)
 
     def create_videos_table(self):
         """ Create a table within a connected database with columns\n
@@ -149,6 +147,7 @@ class SQLiteDatabase:
             :param str list_labels: list of LabelStruct data types
             :return bool: True if successful, false otherwise
         """
+        raise NotImplementedError("Function add_label needs to be adapted to the new table")
         try:
             with self.connection:
                 self.connection.execute("""
@@ -157,7 +156,7 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.IntegrityError:
+        except sqlite3.OperationalError:
             print(f"Duplicate video with same origin ({image_path_rel}) found. Skipping file")
             return False
 
@@ -176,7 +175,7 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.IntegrityError:
+        except sqlite3.OperationalError:
             print(f"Duplicate video with same origin ({origin_rel}) found. Skipping file")
             return False
 
@@ -195,8 +194,101 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.IntegrityError:
+        except sqlite3.OperationalError:
             print(f"({video_path_rel}, {frame_num}) already converted. Skipping file")
+            return False
+
+    def add_column(self, table_name: str, column_name: str, datatype: str) -> bool:
+        """ Add a column to an existing table
+
+            :param str table_name: name of the existing table
+            :param str column_name: name of the new column
+            :param str datatype: datatype supported by SQLite
+            :returns bool: True if successful, false otherwise
+        """
+        try:
+            data_types = ["NULL", "INTEGER", "REAL", "TEXT", "BLOB"]
+            if datatype not in data_types:
+                print(f"Specified data type {datatype} is not allowed. Allowed data types are {data_types}")
+                return False
+            else:
+                with self.connection:
+                    self.connection.execute(f"""ALTER TABLE {table_name} ADD {column_name} {datatype};""")
+                return True
+
+        # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
+        # but this increases the unique file id in the beginning and i dont want that
+        except sqlite3.OperationalError as error:
+            print(error)
+            return False
+
+    def update_label(self, image_name: str, label_class_dict: dict) -> bool:
+        """Update one single label with the new label_list and the respective classes present. Every key in the
+        label_class_dict will be used to update one column specified by the key. The columns of the table are dynamic"""
+        try:
+            with self.connection:
+                columns = self.get_column_names("labels")
+                classes = self.get_label_classes()
+                for key, entry in label_class_dict.items():
+                    if key in columns:
+                        if key == 'label_list':
+                            self.connection.execute(f"""UPDATE labels SET {key} = ? WHERE image_path = ?;""",
+                                                    (pickle.dumps(entry), image_name))
+                        else:
+                            self.connection.execute(f"""UPDATE labels SET {key} = ? WHERE image_path = ?;""",
+                                                    (entry, image_name))
+                    elif key in classes:
+                        self.connection.execute(f"""UPDATE labels SET {"class_"+key} = ? WHERE image_path = ?;""",
+                                                (entry, image_name))
+                    else:
+                        print(f"Key {key} not in table. Skipping")
+                        continue
+                return True
+        except sqlite3.OperationalError as error:
+            print(error)
+            return False
+
+    def update_labels(self) -> bool:
+        """Temporary function to update the columns with the label_list of each entry"""
+        try:
+            with self.connection:
+                entries = self.get_entries_all("labels")
+                classes = self.get_label_classes()
+                for _entry in entries:
+                    _classes_dict = {i:0 for i in classes}
+                    _label_classes = []
+                    for _label in _entry[2]:
+                        if _label['label'] not in _label_classes:
+                            _label_classes.append(_label['label'])
+                            _classes_dict[_label['label']] = 1 # here one can also obtain the number of instances if the if condition is removed and += 1 instead of =1
+                    self.update_label(_entry[1], _classes_dict)
+        except sqlite3.OperationalError as error:
+            print(error)
+            return False
+
+    def get_column_names(self, table_name):
+        try:
+            with self.connection:
+                columns = self.connection.execute(f"""PRAGMA table_info(labels)""").fetchall()
+            return [col[1] for col in columns]
+        except sqlite3.OperationalError as error:
+            print(error)
+            return False
+
+    def get_label_classes(self) -> List[str]:
+        r"""Returns the classes present in the labels table"""
+        try:
+            with self.connection:
+                columns = self.connection.execute(f"""PRAGMA table_info(labels)""").fetchall()
+            column_list = []
+            for col in columns:
+                if 'class_' in col[1]:
+                    column_list.append(col[1].replace('class_', ''))
+                else:
+                    continue
+            return column_list
+        except sqlite3.OperationalError as error:
+            print(error)
             return False
 
     def get_table_names(self):
@@ -210,7 +302,7 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.IntegrityError:
+        except sqlite3.OperationalError:
             print("Error")
             return False
 
@@ -295,10 +387,6 @@ class SQLiteDatabase:
             print(f"Accessing wrong table {table_name}."
                   f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
 
-    def delete_empty_table(self):
-        raise NotImplementedError("Needs some implementation")
-        # https://stackoverflow.com/questions/2300080/how-to-drop-all-empty-tables-in-sqlite
-
     def delete_table(self, table_name: str):
         """ Delete entire table
 
@@ -310,43 +398,6 @@ class SQLiteDatabase:
         except sqlite3.OperationalError:
             print(f"Accessing wrong table {table_name}."
                   f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
-
-    def change_specific_entry(self, table_name: str, row_id: int, column_name: str, new_value: str):
-        """ Change one specific entry based on the row_id, column_name and table_name,
-
-            :param str table_name: name of the table where to alter the entry
-            :param int row_id: ID of the row
-            :param str column_name: name of the column the entry is in
-            :param str new_value: new value to replace the old with
-            """
-        try:
-            with self.connection:
-                # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
-                self.connection.execute(f"""UPDATE {table_name} SET {column_name} = ? WHERE id = {row_id} ;""",
-                                        (new_value,))
-        except sqlite3.OperationalError as err:
-            print(err)
-
-    def replace_specific(self, table_name: str, column_name, keyword: str, replacement: str):
-        """ Change all entries within a table and column that contain a certain string
-
-            :param str table_name: name of the table where to alter the entry
-            :param str column_name: name of the column the entry is in
-            :param str keyword: keyword to search for
-            :param str replacement: replacement value
-            """
-        if table_name == "labels" and column_name == "label_list":
-            raise AttributeError("Entries are stored as bytes and can't be accessed")
-        try:
-            with self.connection:
-                # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
-                self.connection.execute(
-                    f"""UPDATE {table_name} SET {column_name} = 
-                    REPLACE({column_name}, ?, ?);""",
-                    (keyword, replacement,))
-
-        except sqlite3.OperationalError as err:
-            print(err)
 
     def rename_column(self, table_name, old_column_name, new_column_name):
         """ Change all entries within a table and column that contain a certain string
@@ -400,6 +451,7 @@ class SQLiteDatabase:
         except sqlite3.OperationalError as err:
             print(err)
 
+
 # TODO: generate @staticmethod within the class if not necessary somewhere else
 def get_filename_from_path(path: str):
     """ Get the Filename of a Path object stored as a string
@@ -441,4 +493,6 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 
 
 if __name__ == "__main__":
-    four = 4
+    database_path = "/home/nico/isys/data/test/database.db"
+    database = SQLiteDatabase(database_path)
+    database.update_labels()

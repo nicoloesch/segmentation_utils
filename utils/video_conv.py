@@ -17,7 +17,7 @@ def mpg_to_mp4(base_dir: str = "/home/nico/isys/data",
         :param str database_name: name of the database file with extension
         :param bool quiet: if the frame contains a tumour
         """
-    db = SQLiteDatabase(base_dir, database_name)
+    db = SQLiteDatabase(os.path.join(base_dir, database_name))
     db.create_videos_table()
     for element in sorted(os.listdir(source_dir)):
         counter = db.get_num_entries("videos")  # call here necessary for the recursion
@@ -29,6 +29,7 @@ def mpg_to_mp4(base_dir: str = "/home/nico/isys/data",
                 # string format for at least 9999 videos
                 conv_filename = f"{output_folder}/video{counter+1:04d}.mp4"
                 origin = source_dir.replace(base_dir+'/', '') + f"/{element}"
+
                 # this is only a dummy value as conversion influences with durations due to adding and deleting frames
                 duration = 1
                 out_file = os.path.join(base_dir, conv_filename)
