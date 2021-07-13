@@ -291,6 +291,26 @@ class SQLiteDatabase:
             print(error)
             return False
 
+    def get_labels(self, label_classes: List[str]):
+        r"""Returns all images, which contain a certain class of labels"""
+        try:
+            with self.connection:
+                classes = self.get_label_classes()
+                if all(_class in classes for _class in label_classes):
+                    sql_string = "SELECT * FROM labels WHERE "
+                    for idx in range(len(label_classes)):
+                        if idx > 0:
+                            sql_string += " OR "
+                        sql_string += f"class_{label_classes[idx]} > 0"
+                    sql_string += ";"
+                    ret = self.connection.execute(sql_string).fetchall()
+                    return [entry[1] for entry in ret]
+                else:
+                    print(f"all labels in label_class must be one of\n{classes}")
+        except sqlite3.OperationalError as error:
+            print(error)
+            return False
+
     def get_table_names(self):
         """ Get all tables within one database
 
@@ -495,4 +515,5 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 if __name__ == "__main__":
     database_path = "/home/nico/isys/data/test/database.db"
     database = SQLiteDatabase(database_path)
-    database.update_labels()
+    a = database.get_labels(["tumour", "suspicious"])
+    four = 4
