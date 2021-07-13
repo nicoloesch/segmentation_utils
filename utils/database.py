@@ -4,6 +4,7 @@ import numpy as np
 from typing import Union, List
 import pickle
 import sys
+from packaging import version
 
 # NOTE: it is not best practice with the with statements and directly use a connection but it is also not forbidden and
 # makes the code nice and clean as the with statement terminates the connection to the database after execution
@@ -419,6 +420,34 @@ class SQLiteDatabase:
             print(f"Accessing wrong table {table_name}."
                   f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
 
+    def delete_column(self, table_name: str, column_name: str):
+        try:
+            if version.parse(sqlite3.sqlite_version) > version.parse("3.35"):
+                with self.connection:
+                    self.connection.execute(f"ALTER TABLE {table_name} DROP COLUMN {column_name}")
+            else:
+                raise NotImplementedError(f"Your Version of sqlite ({sqlite3.sqlite_version}) does not support the method.\n"
+                                          f" You need at least version 3.35")
+                """
+                column_names = self.get_column_names(table_name)
+                with self.connection:
+                    table_info = self.connection.execute(f"PRAGMA table_info({table_name});").fetchall()
+                    data_types = [_table_info[2] for _table_info in table_info]
+
+                    # delete entry of column_names and data_types
+                    index = column_names.index(column_name)
+                    column_names.pop(index)
+                    data_types.pop(index)
+
+                # rename old table
+                self.rename_table(table_name, table_name+"_old")
+
+                #create new table
+                creation_string = f"CREATE TABLE {table_name}"
+                """
+        except sqlite3.OperationalError as err:
+            print(err)
+
     def rename_column(self, table_name, old_column_name, new_column_name):
         """ Change all entries within a table and column that contain a certain string
 
@@ -515,5 +544,3 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 if __name__ == "__main__":
     database_path = "/home/nico/isys/data/test/database.db"
     database = SQLiteDatabase(database_path)
-    a = database.get_labels(["tumour", "suspicious"])
-    four = 4

@@ -11,9 +11,7 @@ def main():
     four = 4
     label_dir = "/home/nico/isys/data/images"
     database_path = "/home/nico/isys/data/test/database.db"
-    convert_json_to_sql(label_dir, database_path)
-    database = SQLiteDatabase(database_path)
-    database.get_classes()
+    remove_label_category(database_path, label_dir, "tissue")
 
 
 def convert_json_to_sql(image_dir: str, database_path: str):
