@@ -29,6 +29,7 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
 
         # Other resources for various elements
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.mediaPlayer.setNotifyInterval(50)
 
         # Connect all buttons to events
         self.openDatabaseButton.clicked.connect(self.openDatabase)
@@ -85,6 +86,7 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
         self.mediaPlayer.positionChanged.connect(self.positionChanged)
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
+        self.videoSlider.sliderMoved.connect(self.setPosition)
 
     def playVideo(self):
         if self.stackedWidget.currentWidget() == self.labelImageWidget:
