@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import numpy as np
-from typing import Union, List
+from typing import Union, List, Optional
 import pickle
 import sys
 from packaging import version
@@ -76,6 +76,7 @@ class ImageSample:
 
 
 class LabelStruct:
+    # NOTE: Currently not used
     """Struct to store all necessary information within the sqlite database.
     Can only be pickle but needs further stuff for json. Json is more secure but requires
     inheritance and own function.
@@ -141,24 +142,28 @@ class SQLiteDatabase:
         with self.connection:
             self.connection.execute(CREATE_LABEL_TABLE)
 
-    def add_label(self, image_path_rel: str, list_labels: List[dict]) -> bool:
+    def add_label(self, image_path_rel: str, label_list: List[dict], label_dict: Optional[dict] = None) -> bool:
         """ Add a label to existing label table
 
             :param str image_path_rel: relative path of the image
-            :param str list_labels: list of LabelStruct data types
+            :param str label_list: list of dictionaries which contain the information in the json
+            :param Optional[dict] label_dict: Optional dictionary to add immediately some label_classes to the label
             :return bool: True if successful, false otherwise
         """
-        raise NotImplementedError("Function add_label needs to be adapted to the new table")
         try:
             with self.connection:
-                self.connection.execute("""
-                INSERT INTO labels (image_path, label_list) VALUES (?, ?);""", (image_path_rel, pickle.dumps(list_labels)))
+                self.connection.execute("""INSERT INTO labels (image_path, label_list) VALUES (?, ?);""",
+                                        (image_path_rel, pickle.dumps(label_list)))
+                if label_dict:
+                    self.update_label(image_path_rel, label_dict)
+                else:
+                    print("You need to update labels with 'update_labels' function")
             return True
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.OperationalError:
-            print(f"Duplicate video with same origin ({image_path_rel}) found. Skipping file")
+        except sqlite3.DatabaseError as err:
+            print(err)
             return False
 
     def add_video(self, origin_rel: str, dest_rel: str, duration: int) -> bool:
@@ -176,8 +181,8 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.OperationalError:
-            print(f"Duplicate video with same origin ({origin_rel}) found. Skipping file")
+        except sqlite3.DatabaseError as err:
+            print(err)
             return False
 
     def add_image(self, video_path_rel: str, image_path_rel: str, frame_num: str) -> bool:
@@ -195,8 +200,8 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.OperationalError:
-            print(f"({video_path_rel}, {frame_num}) already converted. Skipping file")
+        except sqlite3.DatabaseError as err:
+            print(err)
             return False
 
     def add_column(self, table_name: str, column_name: str, datatype: str) -> bool:
@@ -219,7 +224,7 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
 
@@ -245,7 +250,7 @@ class SQLiteDatabase:
                         print(f"Key {key} not in table. Skipping")
                         continue
                 return True
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
 
@@ -263,18 +268,39 @@ class SQLiteDatabase:
                             _label_classes.append(_label['label'])
                             _classes_dict[_label['label']] = 1 # here one can also obtain the number of instances if the if condition is removed and += 1 instead of =1
                     self.update_label(_entry[1], _classes_dict)
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
 
-    def get_column_names(self, table_name):
+    def get_column_names(self, table_name: str):
         try:
             with self.connection:
-                columns = self.connection.execute(f"""PRAGMA table_info(labels)""").fetchall()
+                columns = self.get_table_info(table_name)
             return [col[1] for col in columns]
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
+
+    def get_table_info(self, table_name: str):
+        try:
+            with self.connection:
+                return self.connection.execute(f"""PRAGMA table_info({table_name})""").fetchall()
+        except sqlite3.DatabaseError as err:
+            print(err)
+
+    def get_column_datatype(self, table_name: str, column_name):
+        try:
+            with self.connection:
+                table_info = self.connection.execute(f"""PRAGMA table_info({table_name})""").fetchall()
+
+            for entry in table_info:
+                if entry[1] == column_name:
+                    return entry[2]
+                else:
+                    continue
+            return None
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def get_label_classes(self) -> List[str]:
         r"""Returns the classes present in the labels table"""
@@ -288,7 +314,7 @@ class SQLiteDatabase:
                 else:
                     continue
             return column_list
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
 
@@ -308,7 +334,7 @@ class SQLiteDatabase:
                     return [entry[1] for entry in ret]
                 else:
                     print(f"all labels in label_class must be one of\n{classes}")
-        except sqlite3.OperationalError as error:
+        except sqlite3.DatabaseError as error:
             print(error)
             return False
 
@@ -323,8 +349,8 @@ class SQLiteDatabase:
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.OperationalError:
-            print("Error")
+        except sqlite3.DatabaseError as err:
+            print(err)
             return False
 
     def get_entries_all(self, table_name: str) -> List[list]:
@@ -337,9 +363,8 @@ class SQLiteDatabase:
             with self.connection:
                 ret = self.connection.execute(f"SELECT * FROM {table_name};").fetchall()
                 return check_for_bytes(ret)
-        except sqlite3.OperationalError:
-            print(f"Accessing wrong table {table_name}."
-                  f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def get_entries_specific(self, table_name: str, column_name: str, entry_name: str):
         """ Get all the entries where the entry_name is in the column specified by column_name
@@ -355,8 +380,8 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 ret = self.connection.execute(f"SELECT * FROM {table_name} WHERE {column_name} = ?;", (entry_name,)).fetchall()
-                return check_for_bytes(ret)
-        except sqlite3.OperationalError as err:
+            return check_for_bytes(ret)
+        except sqlite3.DatabaseError as err:
             print(err)
 
     def get_label_from_imagepath(self, imagepath: str):
@@ -374,9 +399,8 @@ class SQLiteDatabase:
             with self.connection:
                 ret = self.connection.execute(f"SELECT {column_name} FROM {table_name};").fetchall()
                 return check_for_bytes(ret)
-        except sqlite3.OperationalError:
-            print(f"Accessing wrong table {table_name}."
-                  f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def get_num_entries(self, table_name: str):
         """ Get the total number of entries
@@ -387,9 +411,8 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 return self.connection.execute(f"SELECT COUNT(*) FROM {table_name};").fetchone()[0]
-        except sqlite3.OperationalError:
-            print(f"Accessing wrong table {table_name}."
-                  f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def get_num_entries_specific(self, table_name: str, column_name: str, entry_name: str) -> int:
         """ Returns number of entries which match the specifier entry_name of the column
@@ -404,9 +427,8 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 return self.connection.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {column_name} = ?;", (entry_name,)).fetchone()[0]
-        except sqlite3.OperationalError:
-            print(f"Accessing wrong table {table_name}."
-                  f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def delete_table(self, table_name: str):
         """ Delete entire table
@@ -416,9 +438,8 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 return self.connection.execute(f"DROP TABLE IF EXISTS {table_name};")
-        except sqlite3.OperationalError:
-            print(f"Accessing wrong table {table_name}."
-                  f"Available tables are {[tab[0] for tab in self.get_table_names()]}")
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def delete_column(self, table_name: str, column_name: str):
         try:
@@ -431,10 +452,10 @@ class SQLiteDatabase:
                 # answer can be found at
                 # https://stackoverflow.com/questions/8442147/how-to-delete-or-add-column-in-sqlite and
                 # https://stackoverflow.com/questions/5938048/delete-column-from-sqlite-table
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
             print(err)
 
-    def rename_column(self, table_name, old_column_name, new_column_name):
+    def rename_column(self, table_name: str, old_column_name: str, new_column_name: str):
         """ Change all entries within a table and column that contain a certain string
 
             :param str table_name: name of the table where to alter the entry
@@ -446,7 +467,20 @@ class SQLiteDatabase:
                 # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
                 self.connection.execute(
                     f"""ALTER TABLE {table_name} RENAME COLUMN {old_column_name} TO {new_column_name};""")
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
+            print(err)
+
+    def clear_column(self, table_name: str, column_name: str):
+        """This function clears all entries within one column"""
+        try:
+            datatype = self.get_column_datatype(table_name, column_name)
+            if datatype:
+                self.delete_column(table_name, column_name)
+                self.add_column(table_name, column_name, datatype)
+            else:
+                raise AttributeError(f"{column_name} column not in specified table {table_name}")
+
+        except sqlite3.DatabaseError as err:
             print(err)
 
     def rename_table(self, old: str, new: str):
@@ -465,7 +499,7 @@ class SQLiteDatabase:
                 ret = self.connection.execute(f"SELECT * FROM images WHERE image_path = ?;", (image_name,)).fetchone()
                 duration = self.get_entries_specific('videos', 'dest', ret[1])[3]
                 return ret[1], ret[3], duration
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
             print(err)
 
     def update_entry(self, table_name: str, column_name_search: str, keyword: str, column_name_replace: str, value_new: str):
@@ -483,7 +517,7 @@ class SQLiteDatabase:
                 # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
                 self.connection.execute(f"""UPDATE {table_name} SET {column_name_replace} = ? WHERE {column_name_search} = ?;""",
                                         (value_new, keyword))
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
             print(err)
 
     def get_notes(self, image_path: str):
@@ -492,7 +526,7 @@ class SQLiteDatabase:
             with self.connection:
                 return self.connection.execute("""SELECT notes FROM labels WHERE image_path = ?;""",
                                                (image_path,)).fetchall()[0][0]
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
             print(err)
 
     def set_notes(self, image_path: str, text: str) -> bool:
@@ -502,7 +536,7 @@ class SQLiteDatabase:
                 self.connection.execute("""UPDATE labels SET notes = ? WHERE image_path = ?;""",
                                         (text, image_path))
             return True
-        except sqlite3.OperationalError as err:
+        except sqlite3.DatabaseError as err:
             print(err)
             return False
 
@@ -548,10 +582,10 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 
 
 if __name__ == "__main__":
-    database_path = "/home/nico/isys/data/test/database.db"
-    database = SQLiteDatabase(database_path)
-    a = database.get_notes("images/video0001_0001.png")
-    four = 4
+    db_path = "/home/nico/isys/data/test/database.db"
+    db = SQLiteDatabase(db_path)
+    a = db.clear_column("labels", "notes")
+
 
 
 
