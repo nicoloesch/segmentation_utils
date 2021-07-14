@@ -8,113 +8,35 @@ from packaging import version
 
 # NOTE: it is not best practice with the with statements and directly use a connection but it is also not forbidden and
 # makes the code nice and clean as the with statement terminates the connection to the database after execution
-
-# NOTE: so far only two tables with specific names are created (videos and images). if put in function, it can be
-# altered
 import numpy as np
 
 CREATE_VIDEOS_TABLE = """
     CREATE TABLE IF NOT EXISTS videos (
-    id INTEGER PRIMARY KEY,
-    origin TEXT NOT NULL,
-    dest TEXT NOT NULL,
-    duration INTEGER NOT NULL,
-    UNIQUE (origin));"""
-INSERT_VIDEO = "INSERT INTO videos (origin, dest, duration) VALUES (?, ?, ?);"
+    video_id INTEGER PRIMARY KEY,
+    origin_path TEXT NOT NULL UNIQUE ,
+    conv_path TEXT NOT NULL UNIQUE ,
+    duration INTEGER NOT NULL);"""
+INSERT_VIDEO = "INSERT INTO videos (origin_path, conv_path, duration) VALUES (?, ?, ?);"
 
 CREATE_IMAGES_TABLE = """
     CREATE TABLE IF NOT EXISTS images (
-    id INTEGER PRIMARY KEY,
+    image_id INTEGER PRIMARY KEY,
     video_path TEXT NOT NULL,
-    image_path TEXT NOT NULL,
+    image_path TEXT NOT NULL UNIQUE,
     frame_num INTEGER NOT NULL,
-    UNIQUE (video_path, frame_num));"""
+    UNIQUE (video_path, frame_num),
+    FOREIGN KEY (video_path) REFERENCES videos(conv_path));"""
+
 INSERT_IMAGE = """
     INSERT INTO images (video_path, image_path, frame_num) 
     VALUES (?, ?, ?);"""
 
 CREATE_LABEL_TABLE = """
     CREATE TABLE IF NOT EXISTS labels (
-    id INTEGER PRIMARY KEY,
-    image_path TEXT NOT NULL,
+    label_id INTEGER PRIMARY KEY,
+    image_path TEXT NOT NULL UNIQUE,
     label_list BLOB NOT NULL,
-    UNIQUE (image_path));"""
-
-
-class ImageSample:
-    """ Class for the storage of video frames for sampling
-            """
-    def __init__(self,
-                 video_name: str,
-                 video_path: str,
-                 frame_num: int,
-                 tumour: int,
-                 bubbles: int,
-                 bladder_entrance: int,
-                 burnt_tissue: int,
-                 instrument: int,
-                 scar: int,
-                 urine: int,
-                 light: str,
-                 other: str = ""):
-        self.video_name = video_name
-        self.video_path = video_path
-        self.frame_num = frame_num
-        self.tumour = tumour
-        self.bubbles = bubbles
-        self.bladder_entrance = bladder_entrance
-        self.burnt_tissue = burnt_tissue
-        self.instrument = instrument
-        self.scar = scar
-        self.urine = urine
-        self.light = light
-        self.other = other
-
-    def __repr__(self):
-        rep = f"Frame {self.frame_num}"
-        return rep
-
-
-class LabelStruct:
-    # NOTE: Currently not used
-    """Struct to store all necessary information within the sqlite database.
-    Can only be pickle but needs further stuff for json. Json is more secure but requires
-    inheritance and own function.
-    https://stackoverflow.com/questions/3768895/how-to-make-a-class-json-serializable
-    https://stackoverflow.com/questions/6578986/how-to-convert-json-data-into-a-python-object
-    """
-    def __init__(self,
-                 label_name: str,
-                 points: np.array,
-                 group_id: None,
-                 shape_type: str,
-                 flags: None):
-        self.label_name = label_name
-        self.shape_type = shape_type
-        self.points = points
-        self.group_id = group_id
-        self.flags = flags
-
-    def __repr__(self):
-        rep = f"{self.label_name} ({self.shape_type.capitalize()}, {self.points.shape[0]} vertices)"
-        return rep
-
-    @staticmethod
-    def from_json(json_list):
-        """Create Labelstruct from JSON dictionary.
-        """
-        return [LabelStruct(label_name=json_dict['label'],
-                            points=json_dict['points'],
-                            group_id=json_dict['group_id'],
-                            shape_type=json_dict['shape_type'],
-                            flags=json_dict['flags']) for json_dict in json_list]
-
-    def to_json(self):
-        return {'label': self.label_name,
-                'points': self.points,
-                'group_id': self.group_id,
-                'shape_type': self.shape_type,
-                'flags': self.flags}
+    FOREIGN KEY (image_path) REFERENCES images(image_path));"""
 
 
 class SQLiteDatabase:
@@ -124,6 +46,8 @@ class SQLiteDatabase:
             :param database_path: path to the database
             """
         self.connection = sqlite3.connect(database_path)
+        with self.connection:
+            self.connection.execute(f"PRAGMA foreign_keys = ON;")
 
     def create_videos_table(self):
         """ Create a table within a connected database with columns\n
@@ -142,41 +66,17 @@ class SQLiteDatabase:
         with self.connection:
             self.connection.execute(CREATE_LABEL_TABLE)
 
-    def add_label(self, image_path_rel: str, label_list: List[dict], label_dict: Optional[dict] = None) -> bool:
-        """ Add a label to existing label table
-
-            :param str image_path_rel: relative path of the image
-            :param str label_list: list of dictionaries which contain the information in the json
-            :param Optional[dict] label_dict: Optional dictionary to add immediately some label_classes to the label
-            :return bool: True if successful, false otherwise
-        """
-        try:
-            with self.connection:
-                self.connection.execute("""INSERT INTO labels (image_path, label_list) VALUES (?, ?);""",
-                                        (image_path_rel, pickle.dumps(label_list)))
-                if label_dict:
-                    self.update_label(image_path_rel, label_dict)
-                else:
-                    print("You need to update labels with 'update_labels' function")
-            return True
-
-        # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
-        # but this increases the unique file id in the beginning and i dont want that
-        except sqlite3.DatabaseError as err:
-            print(err)
-            return False
-
-    def add_video(self, origin_rel: str, dest_rel: str, duration: int) -> bool:
+    def add_video(self, origin_path_rel: str, conv_path_rel: str, duration: int) -> bool:
         """ Add a video entry to existing table if the origin_name is not already included in the database
 
-            :param str origin_rel: relative origin of video
-            :param str dest_rel: relative destination
+            :param str origin_path_rel: relative origin of video
+            :param str conv_path_rel: relative destination of converted video
             :param int duration: duration of the video necessary for PyQT
             :return bool: True if successful, false otherwise
         """
         try:
             with self.connection:
-                self.connection.execute(INSERT_VIDEO, (origin_rel, dest_rel, duration))
+                self.connection.execute(INSERT_VIDEO, (origin_path_rel, conv_path_rel, duration))
             return True
 
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
@@ -201,8 +101,40 @@ class SQLiteDatabase:
         # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
         # but this increases the unique file id in the beginning and i dont want that
         except sqlite3.DatabaseError as err:
-            print(err)
-            return False
+            if 'FOREIGN KEY' in str(err):
+                print(f"{err}. Provided video_path_rel {video_path_rel} is not in table videos but refers to them.\n"
+                      f"Check Argument of function add_image")
+                return False
+            else:
+                print(err)
+
+    def add_label(self, image_path_rel: str, label_list: List[dict], label_dict: Optional[dict] = None) -> bool:
+        """ Add a label to existing label table
+
+            :param str image_path_rel: relative path of the image
+            :param str label_list: list of dictionaries which contain the information in the json
+            :param Optional[dict] label_dict: Optional dictionary to add immediately some label_classes to the label
+            :return bool: True if successful, false otherwise
+        """
+        try:
+            with self.connection:
+                self.connection.execute("""INSERT INTO labels (image_path, label_list) VALUES (?, ?);""",
+                                        (image_path_rel, pickle.dumps(label_list)))
+                if label_dict:
+                    self.update_label(image_path_rel, label_dict)
+                else:
+                    print("You need to update labels with 'update_labels' function")
+            return True
+
+        # could be prevented by making the statement INSERT_VIDEO to INSERT OR REPLACE
+        # but this increases the unique file id in the beginning and i dont want that
+        except sqlite3.DatabaseError as err:
+            if 'FOREIGN KEY' in str(err):
+                print(f"{err}. Provided image_path_rel {image_path_rel} is not in table images but refers to them.\n"
+                      f"Check Argument of function add_label")
+                return False
+            else:
+                print(err)
 
     def add_column(self, table_name: str, column_name: str, datatype: str) -> bool:
         """ Add a column to an existing table
@@ -244,7 +176,7 @@ class SQLiteDatabase:
                             self.connection.execute(f"""UPDATE labels SET {key} = ? WHERE image_path = ?;""",
                                                     (entry, image_name))
                     elif key in classes:
-                        self.connection.execute(f"""UPDATE labels SET {"class_"+key} = ? WHERE image_path = ?;""",
+                        self.connection.execute(f"""UPDATE labels SET {"class_" + key} = ? WHERE image_path = ?;""",
                                                 (entry, image_name))
                     else:
                         print(f"Key {key} not in table. Skipping")
@@ -260,13 +192,16 @@ class SQLiteDatabase:
             with self.connection:
                 entries = self.get_entries_all("labels")
                 classes = self.get_label_classes()
+
+                # populate the columns based on the label_list
                 for _entry in entries:
-                    _classes_dict = {i:0 for i in classes}
+                    _classes_dict = {i: 0 for i in classes}
                     _label_classes = []
                     for _label in _entry[2]:
                         if _label['label'] not in _label_classes:
                             _label_classes.append(_label['label'])
-                            _classes_dict[_label['label']] = 1 # here one can also obtain the number of instances if the if condition is removed and += 1 instead of =1
+                            _classes_dict[_label[
+                                'label']] = 1  # here one can also obtain the number of instances if the if condition is removed and += 1 instead of =1
                     self.update_label(_entry[1], _classes_dict)
         except sqlite3.DatabaseError as error:
             print(error)
@@ -292,7 +227,6 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 table_info = self.connection.execute(f"""PRAGMA table_info({table_name})""").fetchall()
-
             for entry in table_info:
                 if entry[1] == column_name:
                     return entry[2]
@@ -306,9 +240,9 @@ class SQLiteDatabase:
         r"""Returns the classes present in the labels table"""
         try:
             with self.connection:
-                columns = self.connection.execute(f"""PRAGMA table_info(labels)""").fetchall()
+                table_info = self.get_table_info("labels")
             column_list = []
-            for col in columns:
+            for col in table_info:
                 if 'class_' in col[1]:
                     column_list.append(col[1].replace('class_', ''))
                 else:
@@ -316,9 +250,9 @@ class SQLiteDatabase:
             return column_list
         except sqlite3.DatabaseError as error:
             print(error)
-            return False
+            return []
 
-    def get_labels(self, label_classes: List[str]):
+    def get_labels(self, label_classes: List[str]) -> List[str]:
         r"""Returns all images, which contain a certain class of labels"""
         try:
             with self.connection:
@@ -336,7 +270,7 @@ class SQLiteDatabase:
                     print(f"all labels in label_class must be one of\n{classes}")
         except sqlite3.DatabaseError as error:
             print(error)
-            return False
+            return []
 
     def get_table_names(self):
         """ Get all tables within one database
@@ -379,13 +313,15 @@ class SQLiteDatabase:
             raise AttributeError("Entries are stored as bytes and can't be searched")
         try:
             with self.connection:
-                ret = self.connection.execute(f"SELECT * FROM {table_name} WHERE {column_name} = ?;", (entry_name,)).fetchall()
+                ret = self.connection.execute(f"SELECT * FROM {table_name} WHERE {column_name} = ?;",
+                                              (entry_name,)).fetchall()
             return check_for_bytes(ret)
         except sqlite3.DatabaseError as err:
             print(err)
 
     def get_label_from_imagepath(self, imagepath: str):
-        ret = self.connection.execute(f"SELECT label_list FROM labels WHERE image_path = ?;", (imagepath,)).fetchall()
+        ret = self.connection.execute(f"SELECT label_list FROM labels WHERE image_path = ?;",
+                                      (imagepath,)).fetchall()
         return check_for_bytes(ret)
 
     def get_entries_of_column(self, table_name: str, column_name: str):
@@ -426,7 +362,8 @@ class SQLiteDatabase:
             raise AttributeError("Entries are stored as bytes and can't be searched")
         try:
             with self.connection:
-                return self.connection.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {column_name} = ?;", (entry_name,)).fetchone()[0]
+                return self.connection.execute(f"SELECT COUNT(*) FROM {table_name} WHERE {column_name} = ?;",
+                                               (entry_name,)).fetchone()[0]
         except sqlite3.DatabaseError as err:
             print(err)
 
@@ -447,8 +384,9 @@ class SQLiteDatabase:
                 with self.connection:
                     self.connection.execute(f"ALTER TABLE {table_name} DROP COLUMN {column_name}")
             else:
-                raise NotImplementedError(f"Your Version of sqlite ({sqlite3.sqlite_version}) does not support the method.\n"
-                                          f" You need at least version 3.35")
+                raise NotImplementedError(
+                    f"Your Version of sqlite ({sqlite3.sqlite_version}) does not support the method.\n"
+                    f" You need at least version 3.35")
                 # answer can be found at
                 # https://stackoverflow.com/questions/8442147/how-to-delete-or-add-column-in-sqlite and
                 # https://stackoverflow.com/questions/5938048/delete-column-from-sqlite-table
@@ -496,15 +434,16 @@ class SQLiteDatabase:
     def get_video_from_image(self, image_name: str):
         try:
             with self.connection:
-                ret = self.connection.execute(f"SELECT * FROM images WHERE image_path = ?;", (image_name,)).fetchone()
+                ret = self.connection.execute(f"SELECT * FROM images WHERE image_path = ?;",
+                                              (image_name,)).fetchone()
                 duration = self.get_entries_specific('videos', 'dest', ret[1])[3]
                 return ret[1], ret[3], duration
         except sqlite3.DatabaseError as err:
             print(err)
 
-    def update_entry(self, table_name: str, column_name_search: str, keyword: str, column_name_replace: str, value_new: str):
-        """ Update a single entry based on the old value in the column. Is most likely similar to
-        replace_specific and change specific entry
+    def update_entry(self, table_name: str, column_name_search: str, keyword: str, column_name_replace: str,
+                     value_new: str):
+        """ Update a single entry based on the old value in the column.
 
             :param str table_name: name of the table where to alter the entry
             :param int keyword: keyword to search in column_name_search
@@ -515,8 +454,9 @@ class SQLiteDatabase:
         try:
             with self.connection:
                 # NOTE: pure f string formatting didnt work so its a mixture. Don't know why
-                self.connection.execute(f"""UPDATE {table_name} SET {column_name_replace} = ? WHERE {column_name_search} = ?;""",
-                                        (value_new, keyword))
+                self.connection.execute(
+                    f"""UPDATE {table_name} SET {column_name_replace} = ? WHERE {column_name_search} = ?;""",
+                    (value_new, keyword))
         except sqlite3.DatabaseError as err:
             print(err)
 
@@ -581,11 +521,46 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
     return [list(elem) for elem in lst]
 
 
+def transform_databases(database_old, database_new):
+    db_old = SQLiteDatabase(database_old)
+    db_new = SQLiteDatabase(database_new)
+
+    # Create respective tables
+    db_new.create_videos_table()
+    db_new.create_labels_table()
+    db_new.create_images_table()
+
+    # First transform the videos table
+    videos = db_old.get_entries_all("videos")
+    for vid in videos:
+        db_new.add_video(vid[1], vid[2], vid[3])
+
+    # Second transform the images table
+    images = db_old.get_entries_all("images")
+    for img in images:
+        db_new.add_image(img[1], img[2], img[3])
+
+    # Third the labels table
+    label_columns = db_old.get_column_names("labels")
+    label_columns.pop(0)  # remove 'id' from the column list
+
+    # create columns
+    for col in label_columns:
+        db_new.add_column("labels", col, db_old.get_column_datatype("labels", col))
+
+    # populate columns
+    labels = db_old.get_entries_all("labels")
+
+    for lab in labels:
+        lab.pop(0)  # removes the ID
+        image_path = lab[0]
+        label_list = lab[1]
+        label_dict = {key: lab[idx] for idx, key in enumerate(label_columns)}
+        label_dict.pop("image_path")  # remove that key from the dict
+        label_dict.pop("label_list")
+        db_new.add_label(image_path, label_list, label_dict)
+
+
 if __name__ == "__main__":
-    db_path = "/home/nico/isys/data/test/database.db"
-    db = SQLiteDatabase(db_path)
-    a = db.clear_column("labels", "notes")
-
-
-
+    four = 4
 
