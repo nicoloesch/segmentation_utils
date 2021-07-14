@@ -185,11 +185,13 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
         self.updateImages()
 
     def updateImages(self):
-        self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])))
+        self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])).scaledToWidth(
+            self.image.width()))
         # TODO: replace with calls to the SQL database rather than the files themselves
         path_to_labelled = self.basedir / 'labels/SegmentationClassVisualization'
         filename_labeled = pathlib.Path(self.labeled_images[self.image_idx]).stem + '.jpg'
-        self.labelImage.setPixmap(QPixmap(str(path_to_labelled / filename_labeled)))
+        self.labelImage.setPixmap(QPixmap(str(path_to_labelled / filename_labeled)).scaledToWidth(
+            self.labelImage.width()))
 
     @staticmethod
     def frame_to_ms(frame_number: int, fps: int = 25):

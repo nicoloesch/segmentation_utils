@@ -436,7 +436,7 @@ class SQLiteDatabase:
             with self.connection:
                 ret = self.connection.execute(f"SELECT * FROM images WHERE image_path = ?;",
                                               (image_name,)).fetchone()
-                duration = self.get_entries_specific('videos', 'dest', ret[1])[3]
+                duration = self.get_entries_specific('videos', 'conv_path', ret[1])[3]
                 return ret[1], ret[3], duration
         except sqlite3.DatabaseError as err:
             print(err)
@@ -562,5 +562,7 @@ def transform_databases(database_old, database_new):
 
 
 if __name__ == "__main__":
+    db = SQLiteDatabase("/home/nico/isys/data/test/database.db")
+    a = db.get_labels(["tumour"])
     four = 4
 

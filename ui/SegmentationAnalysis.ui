@@ -120,6 +120,12 @@
              </property>
              <item>
               <widget class="QFrame" name="rawImageDisplay">
+               <property name="maximumSize">
+                <size>
+                 <width>800</width>
+                 <height>800</height>
+                </size>
+               </property>
                <property name="frameShape">
                 <enum>QFrame::StyledPanel</enum>
                </property>
@@ -144,6 +150,12 @@
                 </property>
                 <item>
                  <widget class="QLabel" name="image">
+                  <property name="maximumSize">
+                   <size>
+                    <width>800</width>
+                    <height>800</height>
+                   </size>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -280,11 +292,30 @@
                 </property>
                 <item>
                  <widget class="QStackedWidget" name="stackedWidget">
+                  <property name="maximumSize">
+                   <size>
+                    <width>800</width>
+                    <height>800</height>
+                   </size>
+                  </property>
                   <property name="currentIndex">
                    <number>1</number>
                   </property>
-                  <widget class="QVideoWidget" name="videoWidget"/>
+                  <widget class="QVideoWidget" name="videoWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>800</width>
+                     <height>800</height>
+                    </size>
+                   </property>
+                  </widget>
                   <widget class="QWidget" name="labelImageWidget">
+                   <property name="maximumSize">
+                    <size>
+                     <width>800</width>
+                     <height>800</height>
+                    </size>
+                   </property>
                    <property name="whatsThis">
                     <string/>
                    </property>
@@ -306,8 +337,17 @@
                     </property>
                     <item>
                      <widget class="QLabel" name="labelImage">
+                      <property name="maximumSize">
+                       <size>
+                        <width>800</width>
+                        <height>800</height>
+                       </size>
+                      </property>
                       <property name="text">
                        <string/>
+                      </property>
+                      <property name="scaledContents">
+                       <bool>false</bool>
                       </property>
                      </widget>
                     </item>
