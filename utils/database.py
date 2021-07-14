@@ -204,7 +204,7 @@ class SQLiteDatabase:
 
             :param str table_name: name of the existing table
             :param str column_name: name of the new column
-            :param str datatype: datatype supported by SQLite
+            :param str datatype: "NULL", "INTEGER", "REAL", "TEXT", "BLOB"
             :returns bool: True if successful, false otherwise
         """
         try:
@@ -428,23 +428,9 @@ class SQLiteDatabase:
             else:
                 raise NotImplementedError(f"Your Version of sqlite ({sqlite3.sqlite_version}) does not support the method.\n"
                                           f" You need at least version 3.35")
-                """
-                column_names = self.get_column_names(table_name)
-                with self.connection:
-                    table_info = self.connection.execute(f"PRAGMA table_info({table_name});").fetchall()
-                    data_types = [_table_info[2] for _table_info in table_info]
-
-                    # delete entry of column_names and data_types
-                    index = column_names.index(column_name)
-                    column_names.pop(index)
-                    data_types.pop(index)
-
-                # rename old table
-                self.rename_table(table_name, table_name+"_old")
-
-                #create new table
-                creation_string = f"CREATE TABLE {table_name}"
-                """
+                # answer can be found at
+                # https://stackoverflow.com/questions/8442147/how-to-delete-or-add-column-in-sqlite and
+                # https://stackoverflow.com/questions/5938048/delete-column-from-sqlite-table
         except sqlite3.OperationalError as err:
             print(err)
 
@@ -500,6 +486,26 @@ class SQLiteDatabase:
         except sqlite3.OperationalError as err:
             print(err)
 
+    def get_notes(self, image_path: str):
+        """ This function returns an existing label note """
+        try:
+            with self.connection:
+                return self.connection.execute("""SELECT notes FROM labels WHERE image_path = ?;""",
+                                               (image_path,)).fetchall()[0][0]
+        except sqlite3.OperationalError as err:
+            print(err)
+
+    def set_notes(self, image_path: str, text: str) -> bool:
+        """ This function updates or sets a note within the database"""
+        try:
+            with self.connection:
+                self.connection.execute("""UPDATE labels SET notes = ? WHERE image_path = ?;""",
+                                        (text, image_path))
+            return True
+        except sqlite3.OperationalError as err:
+            print(err)
+            return False
+
 
 # TODO: generate @staticmethod within the class if not necessary somewhere else
 def get_filename_from_path(path: str):
@@ -544,3 +550,8 @@ def convert_to_list(lst: List[tuple]) -> List[list]:
 if __name__ == "__main__":
     database_path = "/home/nico/isys/data/test/database.db"
     database = SQLiteDatabase(database_path)
+    a = database.get_notes("images/video0001_0001.png")
+    four = 4
+
+
+

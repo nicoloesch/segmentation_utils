@@ -29,6 +29,7 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
 
         # Other resources for various elements
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+
         # Connect all buttons to events
         self.openDatabaseButton.clicked.connect(self.openDatabase)
         self.nextImageButton.clicked.connect(self.nextImage)
@@ -50,19 +51,24 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
         self.updateImages()
         self.initButtons()
         self.initVideo()
+        self.setNotesOfUI()
 
     def nextImage(self):
+        self.getNotesFromUI()
         if self.stackedWidget.currentWidget() == self.videoWidget:
             self.stackedWidget.setCurrentWidget(self.labelImageWidget) # maybe self.labelImage insteada
         self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
+        self.setNotesOfUI()
         self.mediaPlayer.stop()
         self.setSkipButtons(False)
         self.updateImages()
 
     def prevImage(self):
+        self.getNotesFromUI()
         if self.stackedWidget.currentWidget() == self.videoWidget:
             self.stackedWidget.setCurrentWidget(self.labelImageWidget) # maybe self.labelImage insteada
         self.image_idx = (self.image_idx + -1) % len(self.labeled_images)
+        self.setNotesOfUI()
         self.mediaPlayer.stop()
         self.setSkipButtons(False)
         self.updateImages()
@@ -131,7 +137,7 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
         self.mediaPlayer.setPosition(position)
 
     def setStartingPosition(self):
-        self._begin = max(0, self.frame_to_ms(self.labelFrame) - self.videoRangeMS / 2.0)
+        self._begin = max(0.0, self.frame_to_ms(self.labelFrame) - self.videoRangeMS / 2.0)
         self._end = min(self._videoDuration, self.frame_to_ms(self.labelFrame) + self.videoRangeMS / 2.0)
 
     def setVideo(self):
@@ -143,6 +149,17 @@ class SegAnalysisMain(QMainWindow, Ui_MainWindow):
         self.setStartingPosition()
         self.setPosition(self._begin)
         self.playButton.setEnabled(True)
+
+    def getNotesFromUI(self):
+        """Reads the text from a textbox and stores it in an SQL Database"""
+        text = self.notesWidget.toPlainText()
+        self.database.set_notes(self.labeled_images[self.image_idx], text)
+        self.notesWidget.clear()
+
+    def setNotesOfUI(self):
+        """Retrieves Notes from SQL Database and updates the Notes Window"""
+        note = self.database.get_notes(self.labeled_images[self.image_idx])
+        self.notesWidget.setText(note)
 
     def handleError(self):
         self.playButton.setEnabled(False)
