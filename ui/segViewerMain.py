@@ -1,4 +1,4 @@
-from ui.SegmentationAnalysis import Ui_MainWindow
+from ui.segViewer import Ui_MainWindow
 from PyQt5.QtCore import QDir, Qt, QUrl, QPointF
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
