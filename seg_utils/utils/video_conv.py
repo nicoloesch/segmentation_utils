@@ -1,7 +1,7 @@
 import os
 from database import SQLiteDatabase
 import ffmpeg
-from utils.video_sampling import get_duration
+from seg_utils.utils.video_sampling import get_duration
 
 
 def mpg_to_mp4(base_dir: str = "/home/nico/isys/data",

@@ -1,13 +1,12 @@
-import os
-import glob
 import sys
 from PyQt5.QtWidgets import QApplication
-from ui.segViewerMain import SegAnalysisMain
+from seg_utils.ui.segViewerMain import SegViewerMain
+from seg_utils.ui.segSelectionMain import SegSelectionMain
 
 
 def main():
     app = QApplication(sys.argv)
-    window = SegAnalysisMain()
+    window = SegSelectionMain()
     window.show()
     sys.exit(app.exec_())
 

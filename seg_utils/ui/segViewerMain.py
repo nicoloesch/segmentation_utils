@@ -1,18 +1,15 @@
-from ui.segViewer import Ui_MainWindow
-from PyQt5.QtCore import QDir, Qt, QUrl, QPointF
+from seg_utils.ui.segViewer import Ui_MainWindow
+from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import (QMainWindow, QAction, QTextEdit,
-                             QApplication, QFileDialog, QHBoxLayout, QLabel, QStackedWidget,
-                             QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget, QGridLayout)
-from PyQt5.QtGui import QPixmap, QPolygonF
-from utils.database import SQLiteDatabase
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QStyle)
+from PyQt5.QtGui import QPixmap
+from seg_utils.utils.database import SQLiteDatabase
 import pathlib
 
 
-class SegAnalysisMain(QMainWindow, Ui_MainWindow):
+class SegViewerMain(QMainWindow, Ui_MainWindow):
     def __init__(self):
-        super(SegAnalysisMain, self).__init__()
+        super(SegViewerMain, self).__init__()
         self.setupUi(self)
         self.database = None
         self.basedir = None
