@@ -2,7 +2,7 @@ import os
 import glob
 import sys
 from PyQt5.QtWidgets import QApplication
-from ui.SegmentationAnalysisMain import SegAnalysisMain
+from ui.segViewerMain import SegAnalysisMain
 
 
 def main():
