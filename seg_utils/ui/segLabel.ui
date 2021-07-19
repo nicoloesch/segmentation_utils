@@ -75,14 +75,20 @@
        </property>
        <item>
         <widget class="QFrame" name="leftMenuColor">
+         <property name="minimumSize">
+          <size>
+           <width>82</width>
+           <height>0</height>
+          </size>
+         </property>
          <property name="maximumSize">
           <size>
-           <width>80</width>
+           <width>82</width>
            <height>16777215</height>
           </size>
          </property>
          <property name="styleSheet">
-          <string notr="true">background-color: rgb(136, 138, 133);</string>
+          <string notr="true">background-color: rgb(186, 189, 182);</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
@@ -107,7 +113,7 @@
            <number>0</number>
           </property>
           <item alignment="Qt::AlignTop">
-           <widget class="QFrame" name="LefMenuFrame">
+           <widget class="QFrame" name="leftMenuFrame">
             <property name="frameShape">
              <enum>QFrame::StyledPanel</enum>
             </property>
@@ -149,7 +155,7 @@
 Database</string>
                </property>
                <property name="icon">
-                <iconset resource="icons.qrc">
+                <iconset resource="../resource/icons.qrc">
                  <normaloff>:/icons/icons/folder.png</normaloff>:/icons/icons/folder.png</iconset>
                </property>
                <property name="iconSize">
@@ -184,9 +190,8 @@ Database</string>
                 <string>Save</string>
                </property>
                <property name="icon">
-                <iconset>
-                 <normalon>:/icons/icons/diskette.png</normalon>
-                </iconset>
+                <iconset resource="../resource/icons.qrc">
+                 <normaloff>:/icons/icons/diskette.png</normaloff>:/icons/icons/diskette.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -221,7 +226,7 @@ Database</string>
 Image</string>
                </property>
                <property name="icon">
-                <iconset resource="icons.qrc">
+                <iconset resource="../resource/icons.qrc">
                  <normaloff>:/icons/icons/right-arrow.png</normaloff>:/icons/icons/right-arrow.png</iconset>
                </property>
                <property name="iconSize">
@@ -257,7 +262,7 @@ Image</string>
 Image</string>
                </property>
                <property name="icon">
-                <iconset resource="icons.qrc">
+                <iconset resource="../resource/icons.qrc">
                  <normaloff>:/icons/icons/left-arrow.png</normaloff>:/icons/icons/left-arrow.png</iconset>
                </property>
                <property name="iconSize">
@@ -296,7 +301,7 @@ Image</string>
 Polygon</string>
                </property>
                <property name="icon">
-                <iconset resource="icons.qrc">
+                <iconset resource="../resource/icons.qrc">
                  <normaloff>:/icons/icons/vector.png</normaloff>:/icons/icons/vector.png</iconset>
                </property>
                <property name="iconSize">
@@ -332,7 +337,7 @@ Polygon</string>
 Outline</string>
                </property>
                <property name="icon">
-                <iconset resource="icons.qrc">
+                <iconset resource="../resource/icons.qrc">
                  <normaloff>:/icons/icons/polygonal-chain.png</normaloff>:/icons/icons/polygonal-chain.png</iconset>
                </property>
                <property name="iconSize">
@@ -383,7 +388,7 @@ Outline</string>
            <number>0</number>
           </property>
           <item>
-           <widget class="QLabel" name="centerImage">
+           <widget class="QLabel" name="imageDisplay">
             <property name="text">
              <string/>
             </property>
@@ -463,7 +468,7 @@ Outline</string>
               </widget>
              </item>
              <item>
-              <widget class="QListWidget" name="listWidget_2">
+              <widget class="QListWidget" name="labelList">
                <property name="frameShape">
                 <enum>QFrame::StyledPanel</enum>
                </property>
@@ -606,9 +611,15 @@ Outline</string>
               </widget>
              </item>
              <item>
-              <widget class="QListView" name="fileList">
-               <property name="frameShape">
-                <enum>QFrame::NoFrame</enum>
+              <widget class="QListWidget" name="fileList">
+               <property name="iconSize">
+                <size>
+                 <width>7</width>
+                 <height>7</height>
+                </size>
+               </property>
+               <property name="itemAlignment">
+                <set>Qt::AlignRight</set>
                </property>
               </widget>
              </item>
@@ -652,7 +663,7 @@ Outline</string>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources>
-  <include location="icons.qrc"/>
+  <include location="../resource/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

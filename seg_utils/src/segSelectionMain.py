@@ -1,5 +1,5 @@
 from seg_utils.ui.segSelection import Ui_Form
-from seg_utils.ui import segViewerMain, segLabelMain
+from seg_utils.src import segViewerMain, segLabelMain
 from PyQt5.QtWidgets import (QDialogButtonBox, QWidget)
 
 

@@ -1,7 +1,7 @@
 import sqlite3
 import os
 import numpy as np
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 import pickle
 import sys
 from packaging import version
@@ -271,6 +271,17 @@ class SQLiteDatabase:
         except sqlite3.DatabaseError as error:
             print(error)
             return []
+
+    def get_labeled_images(self) -> Tuple[List[str], List[int]]:
+        """ Returns the image paths of labeled images and a list of whether they are already labeled or not"""
+        try:
+            with self.connection:
+                image_paths = self.connection.execute("SELECT image_path FROM labels").fetchall()
+                label_lists = check_for_bytes(self.connection.execute("SELECT label_list FROM labels").fetchall())
+
+            return [tpl[0] for tpl in image_paths], [1 if lbl else 0 for lbl in check_for_bytes(label_lists)]
+        except sqlite3.DatabaseError as err:
+            print(err)
 
     def get_table_names(self):
         """ Get all tables within one database
@@ -563,6 +574,6 @@ def transform_databases(database_old, database_new):
 
 if __name__ == "__main__":
     db = SQLiteDatabase("/home/nico/isys/data/test/database.db")
-    a = db.get_labels(["tumour"])
+    a, b = db.get_labeled_images()
     four = 4
 
