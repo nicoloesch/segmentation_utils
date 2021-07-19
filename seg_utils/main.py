@@ -2,9 +2,11 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from seg_utils.src.segLabelMain import SegLabelMain
 from seg_utils.src.segSelectionMain import SegSelectionMain
+import argparse
 
 
-def main():
+def main(args):
+
     app = QApplication(sys.argv)
     #window = SegSelectionMain() # this opens the selection window
     window = SegLabelMain()
@@ -13,4 +15,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # Add arguments to argument parser
+    parser = argparse.ArgumentParser()
+    args = parser.parse_args()
+    main(args)

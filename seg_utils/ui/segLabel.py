@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './ui/segLabel.ui'
+# Form implementation generated from reading ui file 'segLabel.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -67,6 +67,7 @@ class Ui_segLabeling(object):
         self.openDatabaseButton.setObjectName("openDatabaseButton")
         self.menuButtonLayout.addWidget(self.openDatabaseButton)
         self.saveButton = QtWidgets.QToolButton(self.leftMenuFrame)
+        self.saveButton.setEnabled(False)
         self.saveButton.setMinimumSize(QtCore.QSize(80, 60))
         self.saveButton.setMaximumSize(QtCore.QSize(80, 60))
         icon1 = QtGui.QIcon()
@@ -78,6 +79,7 @@ class Ui_segLabeling(object):
         self.saveButton.setObjectName("saveButton")
         self.menuButtonLayout.addWidget(self.saveButton)
         self.nextImageButton = QtWidgets.QToolButton(self.leftMenuFrame)
+        self.nextImageButton.setEnabled(False)
         self.nextImageButton.setMinimumSize(QtCore.QSize(80, 60))
         self.nextImageButton.setMaximumSize(QtCore.QSize(80, 60))
         icon2 = QtGui.QIcon()
@@ -89,6 +91,7 @@ class Ui_segLabeling(object):
         self.nextImageButton.setObjectName("nextImageButton")
         self.menuButtonLayout.addWidget(self.nextImageButton)
         self.prevImageButton = QtWidgets.QToolButton(self.leftMenuFrame)
+        self.prevImageButton.setEnabled(False)
         self.prevImageButton.setMinimumSize(QtCore.QSize(80, 60))
         self.prevImageButton.setMaximumSize(QtCore.QSize(80, 60))
         icon3 = QtGui.QIcon()
@@ -101,6 +104,7 @@ class Ui_segLabeling(object):
         self.prevImageButton.setObjectName("prevImageButton")
         self.menuButtonLayout.addWidget(self.prevImageButton)
         self.createPolygonButton = QtWidgets.QToolButton(self.leftMenuFrame)
+        self.createPolygonButton.setEnabled(False)
         self.createPolygonButton.setMinimumSize(QtCore.QSize(80, 60))
         self.createPolygonButton.setMaximumSize(QtCore.QSize(80, 60))
         icon4 = QtGui.QIcon()
@@ -112,6 +116,7 @@ class Ui_segLabeling(object):
         self.createPolygonButton.setObjectName("createPolygonButton")
         self.menuButtonLayout.addWidget(self.createPolygonButton)
         self.traceOutlineButton = QtWidgets.QToolButton(self.leftMenuFrame)
+        self.traceOutlineButton.setEnabled(False)
         self.traceOutlineButton.setMinimumSize(QtCore.QSize(80, 60))
         self.traceOutlineButton.setMaximumSize(QtCore.QSize(80, 60))
         icon5 = QtGui.QIcon()
@@ -133,8 +138,7 @@ class Ui_segLabeling(object):
         self.verticalLayout_7.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_7.setSpacing(0)
         self.verticalLayout_7.setObjectName("verticalLayout_7")
-        self.imageDisplay = QtWidgets.QLabel(self.centerFrame)
-        self.imageDisplay.setText("")
+        self.imageDisplay = ImageViewer(self.centerFrame)
         self.imageDisplay.setObjectName("imageDisplay")
         self.verticalLayout_7.addWidget(self.imageDisplay)
         self.horizontalLayout.addWidget(self.centerFrame)
@@ -259,14 +263,5 @@ class Ui_segLabeling(object):
         self.labelLabel.setText(_translate("segLabeling", "Label List"))
         self.polyLabel.setText(_translate("segLabeling", "Polygon List"))
         self.fileLabel.setText(_translate("segLabeling", "File List"))
+from seg_utils.resource.imageViewer import ImageViewer
 from seg_utils.resource import icons_rc
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    segLabeling = QtWidgets.QMainWindow()
-    ui = Ui_segLabeling()
-    ui.setupUi(segLabeling)
-    segLabeling.show()
-    sys.exit(app.exec_())
