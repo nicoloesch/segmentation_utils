@@ -1,0 +1,13 @@
+<RCC>
+  <qresource prefix="icons">
+    <file>vector.png</file>
+    <file>unchecked.png</file>
+    <file>right-arrow.png</file>
+    <file>polygonal-chain.png</file>
+    <file>polygon.png</file>
+    <file>left-arrow.png</file>
+    <file>folder.png</file>
+    <file>diskette.png</file>
+    <file>checked.png</file>
+  </qresource>
+</RCC>

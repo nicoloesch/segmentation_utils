@@ -1,7 +1,7 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from seg_utils.src.segLabelMain import SegLabelMain
-from seg_utils.src.segSelectionMain import SegSelectionMain
+from seg_utils.src.label_main import SegLabelMain
+from seg_utils.src.selection_main import SegSelectionMain
 import argparse
 
 

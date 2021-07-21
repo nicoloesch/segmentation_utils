@@ -155,8 +155,8 @@
 Database</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/folder.png</normaloff>:/icons/icons/folder.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/folder.png</normaloff>:/icons/folder.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -193,8 +193,8 @@ Database</string>
                 <string>Save</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/diskette.png</normaloff>:/icons/icons/diskette.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/diskette.png</normaloff>:/icons/diskette.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -232,8 +232,8 @@ Database</string>
 Image</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/right-arrow.png</normaloff>:/icons/icons/right-arrow.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/right-arrow.png</normaloff>:/icons/right-arrow.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -271,8 +271,8 @@ Image</string>
 Image</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/left-arrow.png</normaloff>:/icons/icons/left-arrow.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/left-arrow.png</normaloff>:/icons/left-arrow.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -313,8 +313,8 @@ Image</string>
 Polygon</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/vector.png</normaloff>:/icons/icons/vector.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/vector.png</normaloff>:/icons/vector.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -352,8 +352,8 @@ Polygon</string>
 Outline</string>
                </property>
                <property name="icon">
-                <iconset resource="../resource/icons.qrc">
-                 <normaloff>:/icons/icons/polygonal-chain.png</normaloff>:/icons/icons/polygonal-chain.png</iconset>
+                <iconset resource="../icons/icons.qrc">
+                 <normaloff>:/icons/polygonal-chain.png</normaloff>:/icons/polygonal-chain.png</iconset>
                </property>
                <property name="iconSize">
                 <size>
@@ -681,7 +681,7 @@ Outline</string>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../resource/icons.qrc"/>
+  <include location="../icons/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

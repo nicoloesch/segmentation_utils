@@ -1,14 +1,11 @@
 import sys
 
-
-from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QStyle, QListWidgetItem, QGraphicsItem, QGraphicsScene
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon
 
 from seg_utils.utils.database import SQLiteDatabase
-from seg_utils.ui.segLabel import Ui_segLabeling
-from seg_utils.resource.imageViewer import ImageViewer
+from seg_utils.ui.label import Ui_segLabeling
 
 import pathlib
 
@@ -23,13 +20,14 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         # placeholder variables that can be used later
         self.database = None
         self.basedir = None
-        self.labeled_images = None
-        self.current_label = None
+        self.labeled_images = []
+        self.current_label = []
+        self.classes = []
         self.isLabeled = None
         self.img_idx = 0
 
         # File Dialog Options
-        FDStartingDirectory = '/home/nico/isys/data' # QDir.homePath()
+        FDStartingDirectory = '/home/nico/isys/data'  # QDir.homePath()
         FDOptions = QFileDialog.DontUseNativeDialog
 
         # Connect all Buttons to Events
@@ -42,6 +40,21 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         self.fileList.itemClicked.connect(self.fileListItemChanged)
         self.fileSearch.textChanged.connect(self.fileListSearch)
 
+    def initWithDatabase(self, database: str):
+        self.basedir = pathlib.Path(database).parents[0]
+        self.database = SQLiteDatabase(database)
+        self.labeled_images, self.isLabeled = self.database.get_labeled_images()
+        self.initClasses()
+        self.initFileList()
+        self.updateImage()
+        self.enableButtons(True)
+
+    def initClasses(self):
+        """This function initializes the availabe classes in the database and updates the label list"""
+        self.classes = self.database.get_label_classes()
+        for _class in self.classes:
+            self.labelList.addItem(_class)
+
     def openDatabase(self, fdoptions, fddirectory):
         """This function is the handle for opening a database"""
         database, _ = QFileDialog.getOpenFileName(self,
@@ -50,12 +63,7 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
                                                   filter="Database (*.db)",
                                                   options=fdoptions)
         if database:
-            self.basedir = pathlib.Path(database).parents[0]
-            self.database = SQLiteDatabase(database)
-            self.labeled_images, self.isLabeled = self.database.get_labeled_images()
-            self.initFileList()
-            self.updateImage()
-            self.enableButtons(True)
+            self.initWithDatabase(database)
         else:
             # TODO: Exit on cancel - needs to be altered to something more useful
             sys.exit(1)
@@ -78,10 +86,10 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
     def updateLabel(self):
         """Updates the current displayed label/canvas"""
         self.current_label = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
+        self.polyList.clear()
+        for lbl in self.current_label:
+            self.polyList.addItem(lbl['label'])
 
-    def updateFileList(self):
-        """Updates the File List display"""
-        four = 4
 
     def initFileList(self, show_check_box=False):
         for idx, elem in enumerate(self.labeled_images):

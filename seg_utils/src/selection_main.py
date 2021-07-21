@@ -1,5 +1,5 @@
-from seg_utils.ui.segSelection import Ui_Form
-from seg_utils.src import segViewerMain, segLabelMain
+from seg_utils.ui.selection import Ui_Form
+from seg_utils.src import viewer_main, label_main
 from PyQt5.QtWidgets import (QDialogButtonBox, QWidget)
 
 
@@ -11,8 +11,8 @@ class SegSelectionMain(QWidget, Ui_Form):
         self.cancelButton = self.buttonBox.button(QDialogButtonBox.Cancel)
         self.okButton.clicked.connect(self.confirmation)
         self.cancelButton.clicked.connect(self.cancel)
-        self.labeler = segLabelMain.SegLabelMain()
-        self.viewer = segViewerMain.SegViewerMain()
+        self.labeler = label_main.SegLabelMain()
+        self.viewer = viewer_main.SegViewerMain()
 
     def confirmation(self):
         checked_button = self.optionButtons.checkedButton()

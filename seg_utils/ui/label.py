@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'segLabel.ui'
+# Form implementation generated from reading ui file './ui/label.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.4
 #
@@ -59,7 +59,7 @@ class Ui_segLabeling(object):
         self.openDatabaseButton.setMinimumSize(QtCore.QSize(80, 60))
         self.openDatabaseButton.setMaximumSize(QtCore.QSize(80, 60))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/icons/icons/folder.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(":/icons/folder.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.openDatabaseButton.setIcon(icon)
         self.openDatabaseButton.setIconSize(QtCore.QSize(20, 20))
         self.openDatabaseButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -71,7 +71,7 @@ class Ui_segLabeling(object):
         self.saveButton.setMinimumSize(QtCore.QSize(80, 60))
         self.saveButton.setMaximumSize(QtCore.QSize(80, 60))
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap(":/icons/icons/diskette.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap(":/icons/diskette.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.saveButton.setIcon(icon1)
         self.saveButton.setIconSize(QtCore.QSize(20, 20))
         self.saveButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -83,7 +83,7 @@ class Ui_segLabeling(object):
         self.nextImageButton.setMinimumSize(QtCore.QSize(80, 60))
         self.nextImageButton.setMaximumSize(QtCore.QSize(80, 60))
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(":/icons/icons/right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon2.addPixmap(QtGui.QPixmap(":/icons/right-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.nextImageButton.setIcon(icon2)
         self.nextImageButton.setIconSize(QtCore.QSize(20, 20))
         self.nextImageButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -95,7 +95,7 @@ class Ui_segLabeling(object):
         self.prevImageButton.setMinimumSize(QtCore.QSize(80, 60))
         self.prevImageButton.setMaximumSize(QtCore.QSize(80, 60))
         icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(":/icons/icons/left-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon3.addPixmap(QtGui.QPixmap(":/icons/left-arrow.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.prevImageButton.setIcon(icon3)
         self.prevImageButton.setIconSize(QtCore.QSize(20, 20))
         self.prevImageButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -108,7 +108,7 @@ class Ui_segLabeling(object):
         self.createPolygonButton.setMinimumSize(QtCore.QSize(80, 60))
         self.createPolygonButton.setMaximumSize(QtCore.QSize(80, 60))
         icon4 = QtGui.QIcon()
-        icon4.addPixmap(QtGui.QPixmap(":/icons/icons/vector.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon4.addPixmap(QtGui.QPixmap(":/icons/vector.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.createPolygonButton.setIcon(icon4)
         self.createPolygonButton.setIconSize(QtCore.QSize(20, 20))
         self.createPolygonButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -120,7 +120,7 @@ class Ui_segLabeling(object):
         self.traceOutlineButton.setMinimumSize(QtCore.QSize(80, 60))
         self.traceOutlineButton.setMaximumSize(QtCore.QSize(80, 60))
         icon5 = QtGui.QIcon()
-        icon5.addPixmap(QtGui.QPixmap(":/icons/icons/polygonal-chain.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon5.addPixmap(QtGui.QPixmap(":/icons/polygonal-chain.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.traceOutlineButton.setIcon(icon5)
         self.traceOutlineButton.setIconSize(QtCore.QSize(20, 20))
         self.traceOutlineButton.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
@@ -264,4 +264,4 @@ class Ui_segLabeling(object):
         self.polyLabel.setText(_translate("segLabeling", "Polygon List"))
         self.fileLabel.setText(_translate("segLabeling", "File List"))
 from seg_utils.resource.imageViewer import ImageViewer
-from seg_utils.resource import icons_rc
+from seg_utils.src import icons_rc

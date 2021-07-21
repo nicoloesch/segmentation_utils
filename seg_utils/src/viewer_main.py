@@ -1,4 +1,4 @@
-from seg_utils.ui.segViewer import Ui_MainWindow
+from seg_utils.ui.viewer import Ui_MainWindow
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QStyle)

@@ -1,19 +1,22 @@
 import sys
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView, QFrame, QGraphicsPixmapItem
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsView, QFrame, QGraphicsPixmapItem, QMenu
+from PyQt5.QtGui import QPixmap, QKeySequence
 from PyQt5.QtCore import Qt, QRectF, pyqtSignal, QPoint
+
+from seg_utils.src.context_menu import ContextMenu
 
 
 class ImageViewer(QGraphicsView):
     imageDragged = pyqtSignal(QPoint)
 
     def __init__(self, *args):
-        QGraphicsView.__init__(self, *args)
+        super(QGraphicsView, self).__init__(*args)
         self._scene = QGraphicsScene(self)
         self._zoom = 0
         self._image = QGraphicsPixmapItem()
         self._scene.addItem(self._image)
         self._empty = True
+        self.enableZoomPan = False
         self.setScene(self._scene)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
@@ -39,33 +42,51 @@ class ImageViewer(QGraphicsView):
         self._zoom = 0
         if pixmap and not pixmap.isNull():
             self._empty = False
-            self.setDragMode(QGraphicsView.ScrollHandDrag)
             self._image.setPixmap(pixmap)
         else:
             self._empty = True
-            self.setDragMode(QGraphicsView.NoDrag)
             self._image.setPixmap(QPixmap())
+        self.setDragMode(QGraphicsView.NoDrag)  # disable initial dragging of the image
         self.fitInView(QRectF(self._image.pixmap().rect()))
 
     def wheelEvent(self, event):
+        """Responsible for Zoom. Redefines base function"""
         if not self._empty:
-            if event.angleDelta().y() > 0:
-                factor = 1.25
-                self._zoom += 1
-            else:
-                factor = 0.8
-                self._zoom -= 1
-            if self._zoom > 0:
-                self.scale(factor, factor)
-            elif self._zoom == 0:
-                self.fitInView(QRectF(self._image.pixmap().rect()))
-            else:
-                self._zoom = 0
+            if self.enableZoomPan:
+                if event.angleDelta().y() > 0:
+                    factor = 1.25
+                    self._zoom += 1
+                else:
+                    factor = 0.8
+                    self._zoom -= 1
+                if self._zoom > 0:
+                    self.scale(factor, factor)
+                elif self._zoom == 0:
+                    self.fitInView(QRectF(self._image.pixmap().rect()))
+                else:
+                    self._zoom = 0
 
+    def keyPressEvent(self, event) -> None:
+        if not self._empty:
+            if event.key() == QKeySequence(Qt.Key_Control):
+                self.enableZoomPan = True
+                self.setDragMode(QGraphicsView.ScrollHandDrag)
+
+    def keyReleaseEvent(self, event) -> None:
+        if not self._empty:
+            if event.key() == QKeySequence(Qt.Key_Control):
+                self.enableZoomPan = False
+                self.setDragMode(QGraphicsView.NoDrag)
+
+    def contextMenuEvent(self, event) -> None:
+        contextMenu = QMenu(self)
+        action = contextMenu.exec_(self.mapToGlobal())
+    """
     def mousePressEvent(self, event):
         if self._image.isUnderMouse():
             self.imageDragged.emit(self.mapToScene(event.pos()).toPoint())
         super(ImageViewer, self).mousePressEvent(event)
+    """
 
 
 
