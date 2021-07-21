@@ -263,5 +263,5 @@ class Ui_segLabeling(object):
         self.labelLabel.setText(_translate("segLabeling", "Label List"))
         self.polyLabel.setText(_translate("segLabeling", "Polygon List"))
         self.fileLabel.setText(_translate("segLabeling", "File List"))
-from seg_utils.resource.imageViewer import ImageViewer
+from seg_utils.src.image_viewer import ImageViewer
 from seg_utils.src import icons_rc

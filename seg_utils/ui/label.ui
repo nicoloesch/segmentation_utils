@@ -677,7 +677,7 @@ Outline</string>
   <customwidget>
    <class>ImageViewer</class>
    <extends>QGraphicsView</extends>
-   <header>seg_utils.resource.imageViewer</header>
+   <header>seg_utils.src.image_viewer</header>
   </customwidget>
  </customwidgets>
  <resources>
