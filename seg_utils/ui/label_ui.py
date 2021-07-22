@@ -5,6 +5,7 @@ from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
 from seg_utils.src.image_viewer import ImageViewer
+from seg_utils.ui.toolbar import Toolbar
 
 
 class LabelUI(object):
@@ -154,6 +155,8 @@ class LabelUI(object):
         self.statusbar = QtWidgets.QStatusBar(mainWindow)
         self.statusbar.setObjectName("statusbar")
         mainWindow.setStatusBar(self.statusbar)
+        self.toolBar = Toolbar(mainWindow)
+        """
         self.toolBar = QtWidgets.QToolBar(mainWindow)
         self.toolBar.setMinimumSize(QtCore.QSize(80, 100))
         self.toolBar.setMaximumSize(QtCore.QSize(80, 16777215))
@@ -164,5 +167,6 @@ class LabelUI(object):
         self.toolBar.setAllowedAreas(QtCore.Qt.LeftToolBarArea)
         self.toolBar.setOrientation(QtCore.Qt.Vertical)
         self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        self.toolBar.setObjectName("toolBar")
-        mainWindow.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolBar)
+        self.toolBar.setObjectName("toolBar")#
+        """
+        mainWindow.addToolBar(QtCore.Qt.ToolBarArea.LeftToolBarArea, self.toolBar)

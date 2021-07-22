@@ -61,10 +61,10 @@ class SegLabelMain(QMainWindow, LabelUI):
         actionDrawPoly = Action(self,
                                 "Draw\nPolygon",
                                 self.drawPoly,
-                                icon="next",
+                                icon="polygon",
                                 tip="Draw Polygon (right click to show options)")
         actionTraceOutline = Action(self,
-                                    "Draw\nPolygon",
+                                    "Trace\nOutline",
                                     self.traceOutline,
                                     icon="outline",
                                     tip="Trace Outline")
@@ -82,12 +82,15 @@ class SegLabelMain(QMainWindow, LabelUI):
                                   tip="Draw Square")
 
         # Init Toolbar
-        self.toolBar.addAction(actionOpenDB)
-        self.toolBar.addAction(actionSave)
-        self.toolBar.addAction(actionNextImage)
-        self.toolBar.addAction(actionPrevImage)
-        self.toolBar.addAction(actionDrawPoly)
-        self.toolBar.addAction(actionTraceOutline)
+        self.toolBar.addActions((actionOpenDB,
+                                actionSave,
+                                actionNextImage,
+                                actionPrevImage,
+                                actionDrawPoly,
+                                actionTraceOutline))
+
+        self.fileList.itemClicked.connect(self.fileListItemChanged)
+        self.fileSearch.textChanged.connect(self.fileListSearch)
 
     def initWithDatabase(self, database: str):
         self.basedir = pathlib.Path(database).parents[0]
@@ -175,7 +178,7 @@ class SegLabelMain(QMainWindow, LabelUI):
             :param bool value: True enables Buttons, False disables them
         """
         for act in self.toolBar.actions():
-            act.setEnabled(True)
+            self.toolBar.widgetForAction(act).setEnabled(value)
 
     def drawPoly(self):
         four = 4
