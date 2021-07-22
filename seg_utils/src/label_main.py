@@ -5,17 +5,19 @@ from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon
 
 from seg_utils.utils.database import SQLiteDatabase
-from seg_utils.ui.label import Ui_segLabeling
+from seg_utils.ui.toolbar import Toolbar
+from seg_utils.src.actions import Action
+from seg_utils.ui.label_ui import LabelUI
 
 import pathlib
 
 IMAGES_DIR = "images/"
 
 
-class SegLabelMain(QMainWindow, Ui_segLabeling):
+class SegLabelMain(QMainWindow, LabelUI):
     def __init__(self):
         super(SegLabelMain, self).__init__()
-        self.setupUi(self)
+        self.setupUI(self)
 
         # placeholder variables that can be used later
         self.database = None
@@ -26,17 +28,67 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         self.isLabeled = None
         self.img_idx = 0
 
-        # File Dialog Options
+        # File dialog options
         FDStartingDirectory = '/home/nico/isys/data'  # QDir.homePath()
         FDOptions = QFileDialog.DontUseNativeDialog
 
-        # Connect all Buttons to Events
-        self.openDatabaseButton.clicked.connect(lambda: self.openDatabase(FDOptions, FDStartingDirectory))
-        self.nextImageButton.clicked.connect(self.nextImage)
-        self.prevImageButton.clicked.connect(self.prevImag)
-        self.createPolygonButton.clicked.connect(self.createPoly)
-        self.traceOutlineButton.clicked.connect(self.traceOutline)
-        self.saveButton.clicked.connect(self.save)
+        # Define Actions
+        actionOpenDB = Action(self,
+                              "Open\nDatabase",
+                              lambda: self.openDatabase(FDStartingDirectory, FDOptions),
+                              'Ctrl+O',
+                              "open",
+                              "Open database",
+                              enabled=True)
+        actionSave = Action(self,
+                            "Save",
+                            self.saveLabel,
+                            'Ctrl+S',
+                            "save",
+                            "Save Current State")
+        actionNextImage = Action(self,
+                                 "Next\nImage",
+                                 self.nextImage,
+                                 'Right',
+                                 "next",
+                                 "Go to next Image")
+        actionPrevImage = Action(self,
+                                 "Previous\nImage",
+                                 self.prevImag,
+                                 'Left',
+                                 "prev",
+                                 "Go to previos Image")
+        actionDrawPoly = Action(self,
+                                "Draw\nPolygon",
+                                self.drawPoly,
+                                icon="polygon",
+                                tip="Draw Polygon (right click to show options)")
+        actionTraceOutline = Action(self,
+                                    "Trace\nOutline",
+                                    self.traceOutline,
+                                    icon="outline",
+                                    tip="Trace Outline")
+
+        actionDrawCircle = Action(self,
+                                  "Draw\nCircle",
+                                  self.drawCircle,
+                                  icon="circle",
+                                  tip="Draw Circle")
+
+        actionDrawSquare = Action(self,
+                                  "Draw\nSquare",
+                                  self.drawSquare(),
+                                  icon="square",
+                                  tip="Draw Square")
+
+        # Init Toolbar
+        self.toolBar.addActions((actionOpenDB,
+                                actionSave,
+                                actionNextImage,
+                                actionPrevImage,
+                                actionDrawPoly,
+                                actionTraceOutline))
+
         self.fileList.itemClicked.connect(self.fileListItemChanged)
         self.fileSearch.textChanged.connect(self.fileListSearch)
 
@@ -55,7 +107,7 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         for _class in self.classes:
             self.labelList.addItem(_class)
 
-    def openDatabase(self, fdoptions, fddirectory):
+    def openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
         database, _ = QFileDialog.getOpenFileName(self,
                                                   caption="Select Database",
@@ -90,7 +142,6 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         for lbl in self.current_label:
             self.polyList.addItem(lbl['label'])
 
-
     def initFileList(self, show_check_box=False):
         for idx, elem in enumerate(self.labeled_images):
             if show_check_box:
@@ -109,7 +160,7 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         #    self.imageDisplay.width()))
         image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx])).scaled(
             self.centerFrame.width(),
-            self.centerFrame.height(),Qt.KeepAspectRatio)
+            self.centerFrame.height(), Qt.KeepAspectRatio)
 
         self.imageDisplay.setImage(image)
         self.fileList.setCurrentRow(self.img_idx)
@@ -126,17 +177,20 @@ class SegLabelMain(QMainWindow, Ui_segLabeling):
         """This function enables/disabled all the buttons as soon as there is a valid database selected.
             :param bool value: True enables Buttons, False disables them
         """
-        self.saveButton.setEnabled(value)
-        self.nextImageButton.setEnabled(value)
-        self.prevImageButton.setEnabled(value)
-        self.createPolygonButton.setEnabled(value)
-        self.traceOutlineButton.setEnabled(value)
+        for act in self.toolBar.actions():
+            self.toolBar.widgetForAction(act).setEnabled(value)
 
-    def createPoly(self):
+    def drawPoly(self):
+        four = 4
+
+    def drawCircle(self):
+        four = 4
+
+    def drawSquare(self):
         four = 4
 
     def traceOutline(self):
         four = 4
 
-    def save(self):
+    def saveLabel(self):
         four = 4

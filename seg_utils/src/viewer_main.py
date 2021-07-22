@@ -1,16 +1,23 @@
-from seg_utils.ui.viewer import Ui_MainWindow
-from PyQt5.QtCore import QDir, QUrl
+from PyQt5.QtCore import QDir, QUrl, Qt
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QStyle)
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QStyle, QGraphicsView
+from PyQt5.QtGui import QPixmap, QKeySequence
+
 from seg_utils.utils.database import SQLiteDatabase
+from seg_utils.ui.viewer_ui import ViewerUI
+from seg_utils.utils.qt import getIcon
+
 import pathlib
 
+FD_DIR = '/home/nico/isys/data'  # QDir.homePath()
+FD_Options = QFileDialog.DontUseNativeDialog
 
-class SegViewerMain(QMainWindow, Ui_MainWindow):
+
+class SegViewerMain(QMainWindow, ViewerUI):
     def __init__(self):
         super(SegViewerMain, self).__init__()
         self.setupUi(self)
+        self.initialized = False
         self.database = None
         self.basedir = None
         self.labeled_images = None
@@ -40,9 +47,9 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
     def openDatabase(self):
         database, _ = QFileDialog.getOpenFileName(self,
                                                   caption="Select Database",
-                                                  directory=QDir.homePath(),
+                                                  directory=FD_DIR,
                                                   filter="Database (*.db)",
-                                                  options=QFileDialog.DontUseNativeDialog)
+                                                  options=FD_Options)
         self.basedir = pathlib.Path(database).parents[0]
         self.database = SQLiteDatabase(database)
         self.labeled_images = self.database.get_entries_of_column('labels', 'image_path')
@@ -50,11 +57,13 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
         self.initButtons()
         self.initVideo()
         self.setNotesOfUI()
+        self.initialized = True
+        self.statusbar.showMessage("Click in Image and press left CTRL to zoom in respective image")
 
     def nextImage(self):
         self.getNotesFromUI()
         if self.stackedWidget.currentWidget() == self.videoWidget:
-            self.stackedWidget.setCurrentWidget(self.labelImageWidget) # maybe self.labelImage insteada
+            self.stackedWidget.setCurrentWidget(self.labelImage)
         self.image_idx = (self.image_idx + 1) % len(self.labeled_images)
         self.setNotesOfUI()
         self.mediaPlayer.stop()
@@ -64,7 +73,7 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
     def prevImage(self):
         self.getNotesFromUI()
         if self.stackedWidget.currentWidget() == self.videoWidget:
-            self.stackedWidget.setCurrentWidget(self.labelImageWidget) # maybe self.labelImage insteada
+            self.stackedWidget.setCurrentWidget(self.labelImage)
         self.image_idx = (self.image_idx + -1) % len(self.labeled_images)
         self.setNotesOfUI()
         self.mediaPlayer.stop()
@@ -86,7 +95,7 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
         self.videoSlider.sliderMoved.connect(self.setPosition)
 
     def playVideo(self):
-        if self.stackedWidget.currentWidget() == self.labelImageWidget:
+        if self.stackedWidget.currentWidget() == self.labelImage:
             # display the video Widget if currently the label image is displayed
             self.stackedWidget.setCurrentWidget(self.videoWidget)
 
@@ -110,11 +119,9 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
 
     def stateChanged(self, state):
         if state == QMediaPlayer.PlayingState:
-            self.playButton.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playButton.setIcon(getIcon("pause"))
         elif state == QMediaPlayer.PausedState or state == QMediaPlayer.StoppedState:
-            self.playButton.setIcon(
-                self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playButton.setIcon(getIcon("play"))
         else:
             pass
 
@@ -176,20 +183,34 @@ class SegViewerMain(QMainWindow, Ui_MainWindow):
     def displayLabel(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
-        self.stackedWidget.setCurrentWidget(self.labelImageWidget)
+        self.stackedWidget.setCurrentWidget(self.labelImage)
         self.setSkipButtons(False)
         self.displayLabelButton.setEnabled(False)
         self.updateImages()
 
     def updateImages(self):
-        self.image.setPixmap(QPixmap(str(self.basedir / self.labeled_images[self.image_idx])).scaledToWidth(
-            self.image.width()))
+        rawImage = QPixmap(str(self.basedir / self.labeled_images[self.image_idx])).scaled(
+            self.rawImage.width(),
+            self.rawImage.width(), Qt.KeepAspectRatio)
+        self.rawImage.setImage(rawImage)
         # TODO: replace with calls to the SQL database rather than the files themselves
         path_to_labelled = self.basedir / 'labels/SegmentationClassVisualization'
-        filename_labeled = pathlib.Path(self.labeled_images[self.image_idx]).stem + '.jpg'
-        self.labelImage.setPixmap(QPixmap(str(path_to_labelled / filename_labeled)).scaledToWidth(
-            self.labelImage.width()))
+        filename_labeled = pathlib.Path(self.labeled_images[self.image_idx]).stem + '.png'
+        labeledImage = QPixmap(str(path_to_labelled / filename_labeled)).scaled(
+            self.labelImage.width(),
+            self.labelImage.width(), Qt.KeepAspectRatio)
+        self.labelImage.setImage(labeledImage)
+
+    def keyPressEvent(self, event) -> None:
+        pass
+
+    def keyReleaseEvent(self, event) -> None:
+        pass
+
+    def wheelEvent(self, event) -> None:
+        pass
 
     @staticmethod
     def frame_to_ms(frame_number: int, fps: int = 25):
         return (frame_number/fps) * 1000.0
+
