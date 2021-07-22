@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QDir, QUrl, Qt
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QStyle)
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QStyle, QGraphicsView
+from PyQt5.QtGui import QPixmap, QKeySequence
 
 from seg_utils.utils.database import SQLiteDatabase
 from seg_utils.ui.viewer_ui import ViewerUI
@@ -17,6 +17,7 @@ class SegViewerMain(QMainWindow, ViewerUI):
     def __init__(self):
         super(SegViewerMain, self).__init__()
         self.setupUi(self)
+        self.initialized = False
         self.database = None
         self.basedir = None
         self.labeled_images = None
@@ -56,6 +57,8 @@ class SegViewerMain(QMainWindow, ViewerUI):
         self.initButtons()
         self.initVideo()
         self.setNotesOfUI()
+        self.initialized = True
+        self.statusbar.showMessage("Click in Image and press left CTRL to zoom in respective image")
 
     def nextImage(self):
         self.getNotesFromUI()
@@ -198,6 +201,16 @@ class SegViewerMain(QMainWindow, ViewerUI):
             self.labelImage.width(), Qt.KeepAspectRatio)
         self.labelImage.setImage(labeledImage)
 
+    def keyPressEvent(self, event) -> None:
+        pass
+
+    def keyReleaseEvent(self, event) -> None:
+        pass
+
+    def wheelEvent(self, event) -> None:
+        pass
+
     @staticmethod
     def frame_to_ms(frame_number: int, fps: int = 25):
         return (frame_number/fps) * 1000.0
+
