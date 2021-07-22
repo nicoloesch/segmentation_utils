@@ -6,10 +6,6 @@ from typing import Iterable
 class Toolbar(QtWidgets.QToolBar):
     def __init__(self, parent):
         super(Toolbar, self).__init__(parent)
-        m = (0, 0, 0, 0)
-        self.setContentsMargins(*m)
-        self.layout().setSpacing(2)
-        self.layout().setContentsMargins(*m)
         self.actionsDict = {}  # This is a lookup table to match the buttons to the numbers they got added
 
         self.setMinimumSize(QtCore.QSize(80, 100))
@@ -22,6 +18,15 @@ class Toolbar(QtWidgets.QToolBar):
         self.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
         self.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.DefaultContextMenu)
+        self.setObjectName("toolBar")
+
+    def initMargins(self):
+        """This function is necessary because the call to addToolBar in label_ui.py alters the alignment
+        for some reason. Therefore this method will be called AFTER the toolbar is added to the main window"""
+        m = (0, 0, 0, 0)
+        self.setContentsMargins(*m)
+        self.layout().setSpacing(2)
+        self.layout().setContentsMargins(*m)
 
     def addAction(self, action):
         if isinstance(action, QtWidgets.QWidgetAction):
@@ -46,12 +51,6 @@ class Toolbar(QtWidgets.QToolBar):
         """
 
     def addActions(self, actions: Iterable[QtWidgets.QAction]) -> None:
-        # Reinit the layout - idk why i need to do this but otherwise it is not aligned
-        m = (0, 0, 0, 0)
-        self.setContentsMargins(*m)
-        self.layout().setSpacing(2)
-        self.layout().setContentsMargins(*m)
-
         for action in actions:
             if action is None:
                 self.addSeparator()

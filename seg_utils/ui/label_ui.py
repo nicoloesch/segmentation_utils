@@ -156,17 +156,5 @@ class LabelUI(object):
         self.statusbar.setObjectName("statusbar")
         mainWindow.setStatusBar(self.statusbar)
         self.toolBar = Toolbar(mainWindow)
-        """
-        self.toolBar = QtWidgets.QToolBar(mainWindow)
-        self.toolBar.setMinimumSize(QtCore.QSize(80, 100))
-        self.toolBar.setMaximumSize(QtCore.QSize(80, 16777215))
-        self.toolBar.setBaseSize(QtCore.QSize(80, 0))
-        self.toolBar.setAutoFillBackground(False)
-        self.toolBar.setStyleSheet("background-color: rgb(186, 189, 182);")
-        self.toolBar.setMovable(False)
-        self.toolBar.setAllowedAreas(QtCore.Qt.LeftToolBarArea)
-        self.toolBar.setOrientation(QtCore.Qt.Vertical)
-        self.toolBar.setToolButtonStyle(QtCore.Qt.ToolButtonTextUnderIcon)
-        self.toolBar.setObjectName("toolBar")#
-        """
         mainWindow.addToolBar(QtCore.Qt.ToolBarArea.LeftToolBarArea, self.toolBar)
+        self.toolBar.initMargins()

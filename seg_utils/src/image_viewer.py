@@ -79,8 +79,9 @@ class ImageViewer(QGraphicsView):
                 self.setDragMode(QGraphicsView.NoDrag)
 
     def contextMenuEvent(self, event) -> None:
-        contextMenu = QMenu(self)
-        action = contextMenu.exec_(self.mapToGlobal())
+        pass
+        #contextMenu = QMenu(self)
+        #action = contextMenu.exec_(self.mapToGlobal())
     """
     def mousePressEvent(self, event):
         if self._image.isUnderMouse():

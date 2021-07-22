@@ -2,14 +2,16 @@ import sys
 from PyQt5.QtWidgets import QApplication
 from seg_utils.src.label_main import SegLabelMain
 from seg_utils.src.selection_main import SegSelectionMain
+from seg_utils.src.viewer_main import SegViewerMain
 import argparse
 
 
 def main(args):
 
     app = QApplication(sys.argv)
-    #window = SegSelectionMain() # this opens the selection window
-    window = SegLabelMain()
+    #window = SegSelectionMain()  # this opens the selection window
+    #window = SegLabelMain()
+    window = SegViewerMain()
     window.show()
     sys.exit(app.exec_())
 
