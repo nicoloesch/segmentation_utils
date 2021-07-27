@@ -3,21 +3,28 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon
+# Imports for painting
+from PyQt5.QtGui import QPainter, QBrush, QPen, QPolygonF
+from PyQt5.QtCore import Qt, QPointF
 
 from seg_utils.utils.database import SQLiteDatabase
+from seg_utils.utils import masks
+from seg_utils.utils import qt
 from seg_utils.ui.toolbar import Toolbar
 from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
+from seg_utils.ui.canvas import Canvas
 
 import pathlib
 
 IMAGES_DIR = "images/"
 
 
-class SegLabelMain(QMainWindow, LabelUI):
+class LabelMain(QMainWindow, LabelUI):
     def __init__(self):
-        super(SegLabelMain, self).__init__()
+        super(LabelMain, self).__init__()
         self.setupUI(self)
+        #self._canvas = Canvas(self.imageDisplay)
 
         # placeholder variables that can be used later
         self.database = None
@@ -33,6 +40,7 @@ class SegLabelMain(QMainWindow, LabelUI):
         FDOptions = QFileDialog.DontUseNativeDialog
 
         # Define Actions
+        # TODO: some shortcuts dont work
         actionOpenDB = Action(self,
                               "Open\nDatabase",
                               lambda: self.openDatabase(FDStartingDirectory, FDOptions),
@@ -102,7 +110,7 @@ class SegLabelMain(QMainWindow, LabelUI):
         self.enableButtons(True)
 
     def initClasses(self):
-        """This function initializes the availabe classes in the database and updates the label list"""
+        """This function initializes the available classes in the database and updates the label list"""
         self.classes = self.database.get_label_classes()
         for _class in self.classes:
             self.labelList.addItem(_class)
@@ -156,13 +164,11 @@ class SegLabelMain(QMainWindow, LabelUI):
     def updateImage(self):
         """Updates the displayed image and respective label/canvas"""
         self.updateLabel()
-        #self.scene.addPixmap(QPixmap(str(self.basedir / self.labeled_images[self.img_idx])).scaledToWidth(
-        #    self.imageDisplay.width()))
-        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx])).scaled(
-            self.centerFrame.width(),
-            self.centerFrame.height(), Qt.KeepAspectRatio)
+        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx])) #.scaled(
+            #self.centerFrame.width(),
+            #self.centerFrame.height(), Qt.KeepAspectRatio)
 
-        self.imageDisplay.setImage(image)
+        self.imageDisplay.setImage(image, self.current_label)
         self.fileList.setCurrentRow(self.img_idx)
 
     def nextImage(self):
@@ -179,6 +185,13 @@ class SegLabelMain(QMainWindow, LabelUI):
         """
         for act in self.toolBar.actions():
             self.toolBar.widgetForAction(act).setEnabled(value)
+
+    def paintEvent(self, event) -> None:
+        r"""Overload function as mentioned in
+        https://forum.qt.io/topic/64693/unable-to-paint-on-qt-widget-shows-error-paintengine-should-no-longer-be-called/2
+        This functions only spawns one instance of painter here which is dropped immediately"""
+        # painter = QPainter()
+
 
     def drawPoly(self):
         four = 4

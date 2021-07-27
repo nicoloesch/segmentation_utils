@@ -45,7 +45,9 @@ def get_install_requires():
         "PyYAML",
         "qtpy",
         "termcolor",
-        "PyQT5"
+        "PyQT5",
+        "opencv-python",
+        "imgviz"
     ]
 
     """

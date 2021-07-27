@@ -13,9 +13,9 @@ FD_DIR = '/home/nico/isys/data'  # QDir.homePath()
 FD_Options = QFileDialog.DontUseNativeDialog
 
 
-class SegViewerMain(QMainWindow, ViewerUI):
+class ViewerMain(QMainWindow, ViewerUI):
     def __init__(self):
-        super(SegViewerMain, self).__init__()
+        super(ViewerMain, self).__init__()
         self.setupUi(self)
         self.initialized = False
         self.database = None

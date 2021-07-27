@@ -33,40 +33,42 @@ conda create --name=<your_env_name> python=3.8
 conda activate <your_env_name>
 pip install pyqt5  # pyqt5 can be installed via pip on python3
 pip install seg_utils
-
-# check whether pyuic5 and pyrcc5 are in the path
-$PATH$ # should display the colder path/to/anaconda/<your_env_name>/bin
-# otherwise add them manually as they should be included in your bin folder of your environment
 ```
+####Note for Linux Users
+The repository requires both `PyQt5` and `opencv-python`. There might be a conflict within the base version of `PyQt5`
+and its binaries that ship with Linux leading to the following error
+```bash
+QObject::moveToThread: Current thread (0x557c88f2ec90) is not the object's thread (0x557c8970c830).
+Cannot move to target thread (0x557c88f2ec90)
+```
+
+This can be fixed by building `opencv-python` from source as described [here](https://stackoverflow.com/questions/52337870/python-opencv-error-current-thread-is-not-the-objects-thread)
+```bash
+conda activate <your_env_name>
+pip install --no-binary opencv-python opencv-python
+```
+
 
 ## Development
-### UI File creation
-In the folder `seg_utils.ui` are multiple files ending on `.ui` created by QT Creator. If they are changed, one needs to
-update the respective `.py` files with the following command
+## Building standalone application
+```bash
+# navigate to the base folder seg_utils containing setup.py
+pip install .
+pip install pyinstaller
+pyinstaller labelme.spec
+```
+This creates a folder `dist`, where an executable can be found.
+
+
+### Working with UI Files (deprecated)
 ```bash
 # conda environment needs to be active otherwise there will not be a pyuic5 command
-pyuic5 -x <UI_File>.ui -o <UI_File>.py # specifiy the name given by <UI_File>
-```
-
-If the ui file contains additional resources like external icons, one needs to compile the resource file first by
-```bash
+pyuic5 --from-imports=<Package_Name> -x <UI_File>.ui -o <UI_File>.py  # specifiy the name given by <UI_File>
+# and the import statement <Package_Name> as one would in Python with the full path to the package 
+# e.g. seg_utils.src
 pyrcc5 <Resource_File>.qrc -o <Resource_File>_rc.py
-# important to contain the _rc in the output file
 ```
 
-and change the following pyuic command to
-
-```bash
-pyuic5 --from-imports -x <UI_File>.ui -o <UI_File>.py # if the resource file is in the same folder
-pyuic5 --from-imports=<Package_Name> -x <UI_File>.ui -o <UI_File>.py 
-# if the resource file is in a different folder of the same project
-```
-
-This automatically imports the `<Resource_File>` by adding a line of `from . import <UI_File>` in the first case if all
-files are in the same folder. **Otherwise**, the import path can be specified by the `<Package_name>` which is the xact same 
-as if one imports it directly in the python file, e.g `<Package_Name> = seg_utils.ui` results in 
-`from seg_utils.ui import <Resource_File>_rc` (in the case of a resource file with icons).
-I assume, best practice is to include all resource files at the same place
 
 ## Acknowledgement
 
