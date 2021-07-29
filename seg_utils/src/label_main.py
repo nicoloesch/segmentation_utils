@@ -3,17 +3,15 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon
-# Imports for painting
 from PyQt5.QtGui import QPainter, QBrush, QPen, QPolygonF
-from PyQt5.QtCore import Qt, QPointF
+from PyQt5.QtCore import Qt, QPointF, QRect
 
 from seg_utils.utils.database import SQLiteDatabase
-from seg_utils.utils import masks
 from seg_utils.utils import qt
 from seg_utils.ui.toolbar import Toolbar
 from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
-from seg_utils.ui.canvas import Canvas
+
 
 import pathlib
 
@@ -24,26 +22,31 @@ class LabelMain(QMainWindow, LabelUI):
     def __init__(self):
         super(LabelMain, self).__init__()
         self.setupUI(self)
-        #self._canvas = Canvas(self.imageDisplay)
 
         # placeholder variables that can be used later
         self.database = None
         self.basedir = None
         self.labeled_images = []
         self.current_label = []
-        self.classes = []
+        self.classes = {}
         self.isLabeled = None
         self.img_idx = 0
 
-        # File dialog options
-        FDStartingDirectory = '/home/nico/isys/data'  # QDir.homePath()
-        FDOptions = QFileDialog.DontUseNativeDialog
+        # color stuff
+        self._num_colors = 25  # number of colors
+        self.colorMap = None
+        self._icon_size = 10
 
+        self._FD_Dir = '/home/nico/isys/data'  # QDir.homePath()
+        self._FD_Opt = QFileDialog.DontUseNativeDialog
+        self.initActions()
+
+    def initActions(self):
         # Define Actions
         # TODO: some shortcuts dont work
         actionOpenDB = Action(self,
                               "Open\nDatabase",
-                              lambda: self.openDatabase(FDStartingDirectory, FDOptions),
+                              lambda: self.openDatabase(self._FD_Dir, self._FD_Opt),
                               'Ctrl+O',
                               "open",
                               "Open database",
@@ -97,23 +100,33 @@ class LabelMain(QMainWindow, LabelUI):
                                 actionDrawPoly,
                                 actionTraceOutline))
 
-        self.fileList.itemClicked.connect(self.fileListItemChanged)
+        self.fileList.itemClicked.connect(self.fileListItemClicked)
         self.fileSearch.textChanged.connect(self.fileListSearch)
+        self.polyList.itemClicked.connect(self.imageDisplay.polySelected)
 
     def initWithDatabase(self, database: str):
         self.basedir = pathlib.Path(database).parents[0]
         self.database = SQLiteDatabase(database)
         self.labeled_images, self.isLabeled = self.database.get_labeled_images()
+        self.initColors()
         self.initClasses()
         self.initFileList()
         self.updateImage()
+        self.imageDisplay.scene_.setInitialized(True)
         self.enableButtons(True)
 
     def initClasses(self):
         """This function initializes the available classes in the database and updates the label list"""
-        self.classes = self.database.get_label_classes()
-        for _class in self.classes:
-            self.labelList.addItem(_class)
+        classes = self.database.get_label_classes()
+        for idx, _class in enumerate(classes):
+            item = qt.createListWidgetItemWithSquareIcon(_class, self.colorMap[idx], self._icon_size)
+            self.labelList.addItem(item)
+            self.classes[_class] = idx
+        four = 4
+
+    def initColors(self):
+        self.colorMap = qt.colormapRGB(n=self._num_colors)  # have a buffer for new classes
+        self.imageDisplay.initColors(self.colorMap, self.classes)
 
     def openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
@@ -128,7 +141,7 @@ class LabelMain(QMainWindow, LabelUI):
             # TODO: Exit on cancel - needs to be altered to something more useful
             sys.exit(1)
 
-    def fileListItemChanged(self):
+    def fileListItemClicked(self):
         """Tracks the changed item in the label List"""
         selected_file = self.fileList.currentItem().text()
         self.img_idx = self.labeled_images.index(IMAGES_DIR + selected_file)
@@ -148,7 +161,10 @@ class LabelMain(QMainWindow, LabelUI):
         self.current_label = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
         self.polyList.clear()
         for lbl in self.current_label:
-            self.polyList.addItem(lbl['label'])
+            txt = lbl['label']
+            col = self.colorMap[self.classes[txt]]
+            item = qt.createListWidgetItemWithSquareIcon(txt, col, self._icon_size)
+            self.polyList.addItem(item)
 
     def initFileList(self, show_check_box=False):
         for idx, elem in enumerate(self.labeled_images):

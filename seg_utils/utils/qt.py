@@ -1,10 +1,17 @@
 import os.path as osp
-from PyQt5.QtGui import QIcon, QColor, QRgba64
-from PyQt5.QtCore import QSize
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
+from PyQt5.QtGui import QPixmap, QIcon, QColor
+from PyQt5.QtGui import QPainter, QBrush, QPen, QPolygonF
+from PyQt5.QtCore import Qt, QPointF, QRect, QSize
+
 import cv2
-from typing import List
-import imgviz
+from typing import List, Tuple
+import matplotlib
+from matplotlib import cm
 import numpy as np
+
 
 class Label(object):
     def __init__(
@@ -37,18 +44,22 @@ class Label(object):
             self.group_id = item['group_id']
 
 
-def colormapRGB(n: int, alpha: float) -> List[float]:
-    # TODO: replace label_colormap by own function
-    assert 0.0 <= alpha <= 1.0
-    col = imgviz.label_colormap(n_label=n)
-    _alpha = np.full((n,1), alpha*256)
-    col = np.concatenate((col, _alpha), axis=1).astype(int).tolist()
-
-    return [QColor(*_col) for _col in col]
+def colormapRGB(n: int, colormap: str = 'hsv') -> List[QColor]:
+    # TODO: replace get_cmap by own function
+    r"""Creates a colormap with n colors"""
+    cmap = cm.get_cmap(colormap, n)
+    return [QColor.fromRgbF(*cmap(idx)) for idx in range(n)]
 
 
-
-
+def createListWidgetItemWithSquareIcon(text: str, color: QColor, size: int = 5) -> QListWidgetItem:
+    pixmap = QPixmap(size, size)
+    painter = QPainter(pixmap)
+    painter.setPen(color)
+    painter.setBrush(color)
+    painter.drawRect(QRect(0, 0, size, size))
+    icon = QIcon(pixmap)
+    painter.end()
+    return QListWidgetItem(icon, text)
 
 
 def getIcon(icon):

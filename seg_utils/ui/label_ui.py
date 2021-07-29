@@ -4,7 +4,7 @@
 from PyQt5 import QtWidgets
 from PyQt5 import QtCore
 from PyQt5 import QtGui
-from seg_utils.src.image_viewer import ImageViewer
+from seg_utils.ui.image_viewer import ImageViewer
 from seg_utils.ui.toolbar import Toolbar
 
 
@@ -74,11 +74,13 @@ class LabelUI(object):
         self.labelListLabel = QtWidgets.QLabel(self.labelFrame)
         self.labelListLabel.setStyleSheet("background-color: rgb(186, 189, 182);")
         self.labelListLabel.setObjectName("labelListLabel")
+        self.labelListLabel.setText("Labels")
         self.labelLayout.addWidget(self.labelListLabel)
         self.labelList = QtWidgets.QListWidget(self.labelFrame)
         self.labelList.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.labelList.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.labelList.setObjectName("labelList")
+        self.labelList.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
         self.labelLayout.addWidget(self.labelList)
         self.rightMenuLayout.addWidget(self.labelFrame)
         
@@ -95,6 +97,7 @@ class LabelUI(object):
         self.polyLabel = QtWidgets.QLabel(self.polyFrame)
         self.polyLabel.setStyleSheet("background-color: rgb(186, 189, 182);")
         self.polyLabel.setObjectName("polyLabel")
+        self.polyLabel.setText("Polygons")
         self.polyLayout.addWidget(self.polyLabel)
         self.polyList = QtWidgets.QListWidget(self.polyFrame)
         self.polyList.setFrameShape(QtWidgets.QFrame.StyledPanel)
@@ -115,6 +118,7 @@ class LabelUI(object):
         self.fileLabel = QtWidgets.QLabel(self.fileFrame)
         self.fileLabel.setStyleSheet("background-color: rgb(186, 189, 182);")
         self.fileLabel.setObjectName("fileLabel")
+        self.fileLabel.setText("File List")
         self.fileLayout.addWidget(self.fileLabel)
         self.fileSearch = QtWidgets.QTextEdit(self.fileFrame)
 
