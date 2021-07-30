@@ -30,13 +30,13 @@ class ImageViewer(QGraphicsView):
         self.setFrameShape(QFrame.NoFrame)
         self.image_size = QSize(0,0)
         self.classes = {}
-        self.shapes = []
+        self.labels = []
 
         # Painting specific
+        self.pixmap = QPixmap()
         self._alpha = 0.3
         self.brush = QBrush()
         self.brush.setStyle(Qt.SolidPattern)
-        self._painter = QPainter()
 
         self.pen = QPen()
         self.pen.setWidth(1)
@@ -69,12 +69,12 @@ class ImageViewer(QGraphicsView):
     def setImage(self, pixmap: QPixmap, label_list: List[dict]):
         """This function sets the image and updates the pixmap of the QGraphicsView"""
         # clear the scene and remove everything previously created as it is stored in the SQL database anyways
-
         self.scene_.clear()
 
         # plot the image
         if pixmap and not pixmap.isNull():
             self._empty = False
+            self.pixmap = pixmap
             self.scene_.addPixmap(pixmap)
             self.image_size = pixmap.size()
         else:
@@ -90,28 +90,11 @@ class ImageViewer(QGraphicsView):
 
     def setLabels(self, label_list: List[dict]):
         """This function draws the labels"""
+        self.labels = []
         for _label in label_list:
-            # points = _label["points"]
-            label = _label['label']
-            # color = color_brush = deepcopy(self.colorMap[self.classes[label]])
-            self.shapes = Shape.from_dict(Shape(), _label, self.colorMap[self.classes[label]])
-            self.update()
-            """
-            self.adaptBrush(color_brush)
-            self.pen.setColor(color)
-            if _label['shape_type'] == 'trace':
-                if not isinstance(points[0], QPointF):
-                    points = [QPointF(*_point) for _point in points]
-                polygon = QPolygonF(points)
-                _item = self.scene_.addPolygon(polygon, self.pen)
-
-            # draw vertices
-            for _point in points:
-                self.scene_.addRect(self.QRectF_from_QPointF(_point), self.pen, self.brush)
-            """
-    def adaptBrush(self, color_brush):
-        color_brush.setAlphaF(self._alpha)
-        self.brush.setColor(color_brush)
+            _shape = Shape.from_dict(Shape(), _label, self.colorMap[self.classes[_label['label']]])
+            self.scene_.addItem(_shape)
+            self.labels.append(_shape)
 
     def wheelEvent(self, event):
         """Responsible for Zoom. Redefines base function"""
@@ -152,22 +135,29 @@ class ImageViewer(QGraphicsView):
         """Select Polygon from list and highlight it"""
         pass
 
-    def highlightLabel(self, item: QGraphicsItem):
+    def highlightLabel(self, item: Shape):
         """Highlights a label"""
-        self.brush.setColor(Qt.white)
-        item.setBrush(self.brush)
-        pass
+        self.repaint()
 
+    """
     def paintEvent(self, event) -> None:
-        p = self._painter
+        p = QPainter()
         p.begin(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.HighQualityAntialiasing)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        p.scale(1.0, 1.0)
+        p.drawPixmap(0, 0, self.pixmap)
 
 
-    @staticmethod
-    def QRectF_from_QPointF(point: QPointF):
-        #todo: replace with scaling factor depending on image size
-        scale = 4
-        return QRectF(point.x()-(scale/2), point.y()-(scale/2), scale, scale)
+        if self.labels:
+            for _label in self.labels:
+                _label.paint(p)
+
+        p.end()
+    """
+
 
     # If i am going to include a mousePressEvent, there needs to be a filter as graphics_scene also wants to have it
     """

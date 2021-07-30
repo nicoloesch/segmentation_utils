@@ -2,10 +2,13 @@ from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsScene, QGraphicsRectIt
 from PyQt5.QtGui import QPainterPath
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from seg_utils.ui.shape import Shape
+
 
 class imageViewerScene(QGraphicsScene):
-    shapeSelected = pyqtSignal(QPainterPath)
-    shapeHovered = pyqtSignal(QGraphicsItem)
+    shapeSelected = pyqtSignal(Shape)
+    shapeHovered = pyqtSignal(Shape)
+    vertexHovered = pyqtSignal()  # TODO: implement the highlighting of the vertices
 
     def __init__(self, *args):
         super(imageViewerScene, self).__init__(*args)
@@ -18,9 +21,12 @@ class imageViewerScene(QGraphicsScene):
         # TODO: There has to be a nicer method
         pos = event.scenePos()
         for _item in self.items():
-            path = _item.shape()
-            if path.contains(event.scenePos()):
-                self.shapeSelected.emit(path)
+            if not isinstance(_item, QGraphicsPixmapItem):
+                if _item.contains(event.scenePos()):
+                    _item.isHighlighted = True
+                    self.shapeSelected.emit(_item)
+                else:
+                    _item.isHighlighted = False
 
     def selectionChanged(self) -> None:
         four = 4
@@ -28,8 +34,13 @@ class imageViewerScene(QGraphicsScene):
     def mouseMoveEvent(self, event) -> None:
         if self._initialized:
             for _item in self.items():
-                if _item.shape().contains(event.scenePos()) and not isinstance(_item, QGraphicsPixmapItem):
-                    # This makes the code faster es I emit the signal earlier and don't have to go through everything
-                    self.shapeHovered.emit(_item)
+                if not isinstance(_item, QGraphicsPixmapItem):
+                    if _item.contains(event.scenePos()):
+                        _item.isHighlighted = True
+                        self.shapeHovered.emit(_item)
+                    else:
+                        _item.isHighlighted = False
+
+            #print(self.items()[0].isHighlighted, self.items()[1].isHighlighted, self.items()[2].isHighlighted)
         else:
             pass
