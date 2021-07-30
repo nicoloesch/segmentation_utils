@@ -73,7 +73,7 @@ class Shape(QGraphicsItem):
         r"""Method to store the current shape in the SQL Database"""
         pass
 
-    def paint(self, painter: QPainter, option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
+    def paint(self, painter: QPainter): #, option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
         if self.points:
             pen = QPen(self.line_color)
             brush = QBrush(self.brush_color)

@@ -202,13 +202,6 @@ class LabelMain(QMainWindow, LabelUI):
         for act in self.toolBar.actions():
             self.toolBar.widgetForAction(act).setEnabled(value)
 
-    def paintEvent(self, event) -> None:
-        r"""Overload function as mentioned in
-        https://forum.qt.io/topic/64693/unable-to-paint-on-qt-widget-shows-error-paintengine-should-no-longer-be-called/2
-        This functions only spawns one instance of painter here which is dropped immediately"""
-        # painter = QPainter()
-
-
     def drawPoly(self):
         four = 4
 

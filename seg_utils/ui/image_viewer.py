@@ -16,7 +16,7 @@ class ImageViewer(QGraphicsView):
     #imageDragged = pyqtSignal(QPoint)
 
     def __init__(self, *args):
-        super(QGraphicsView, self).__init__(*args)
+        super(ImageViewer, self).__init__(*args)
         self.colorMap, self.drawNewColor = None, None
         self.scene_ = imageViewerScene(self)
         self._zoom = 0
@@ -31,6 +31,7 @@ class ImageViewer(QGraphicsView):
         self.image_size = QSize(0,0)
         self.classes = {}
         self.labels = []
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
 
         # Painting specific
         self.pixmap = QPixmap()
@@ -137,26 +138,22 @@ class ImageViewer(QGraphicsView):
 
     def highlightLabel(self, item: Shape):
         """Highlights a label"""
-        self.repaint()
+        self.update()
 
-    """
     def paintEvent(self, event) -> None:
-        p = QPainter()
-        p.begin(self)
+        p = QPainter(self.viewport())
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.HighQualityAntialiasing)
         p.setRenderHint(QPainter.SmoothPixmapTransform)
 
-        p.scale(1.0, 1.0)
         p.drawPixmap(0, 0, self.pixmap)
-
-
         if self.labels:
             for _label in self.labels:
                 _label.paint(p)
 
         p.end()
-    """
+
+
 
 
     # If i am going to include a mousePressEvent, there needs to be a filter as graphics_scene also wants to have it

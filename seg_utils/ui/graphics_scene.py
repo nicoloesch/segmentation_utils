@@ -41,6 +41,8 @@ class imageViewerScene(QGraphicsScene):
                     else:
                         _item.isHighlighted = False
 
-            #print(self.items()[0].isHighlighted, self.items()[1].isHighlighted, self.items()[2].isHighlighted)
+            #print(self.items()[0].label, self.items()[0].isHighlighted,
+            #      self.items()[1].label, self.items()[1].isHighlighted,
+            #      self.items()[2].label, self.items()[2].isHighlighted)
         else:
             pass
