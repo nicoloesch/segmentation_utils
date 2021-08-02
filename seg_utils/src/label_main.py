@@ -11,6 +11,7 @@ from seg_utils.utils import qt
 from seg_utils.ui.toolbar import Toolbar
 from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
+from seg_utils.ui.shape import Shape
 
 
 import pathlib
@@ -102,17 +103,17 @@ class LabelMain(QMainWindow, LabelUI):
 
         self.fileList.itemClicked.connect(self.fileListItemClicked)
         self.fileSearch.textChanged.connect(self.fileListSearch)
-        self.polyList.itemClicked.connect(self.imageDisplay.polySelected)
+        #self.polyList.itemClicked.connect(self.imageDisplay.polySelected)
 
     def initWithDatabase(self, database: str):
         self.basedir = pathlib.Path(database).parents[0]
         self.database = SQLiteDatabase(database)
         self.labeled_images, self.isLabeled = self.database.get_labeled_images()
+        self.imageDisplay.setInitialized()
         self.initColors()
         self.initClasses()
         self.initFileList()
         self.updateImage()
-        self.imageDisplay.scene_.setInitialized(True)
         self.enableButtons(True)
 
     def initClasses(self):
@@ -122,11 +123,10 @@ class LabelMain(QMainWindow, LabelUI):
             item = qt.createListWidgetItemWithSquareIcon(_class, self.colorMap[idx], self._icon_size)
             self.labelList.addItem(item)
             self.classes[_class] = idx
-        four = 4
 
     def initColors(self):
         self.colorMap = qt.colormapRGB(n=self._num_colors)  # have a buffer for new classes
-        self.imageDisplay.initColors(self.colorMap, self.classes)
+        self.imageDisplay.canvas.setColors(self.colorMap)
 
     def openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
@@ -156,15 +156,24 @@ class LabelMain(QMainWindow, LabelUI):
             else:
                 self.fileList.item(item_idx).setHidden(False)
 
+
+
     def updateLabel(self):
         """Updates the current displayed label/canvas"""
-        self.current_label = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
+        labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
+        self.current_label = [Shape.from_dict(Shape(), _label,
+                                              line_color=self.getColorForLabel(_label['label'])
+                                              ) for _label in labels]
         self.polyList.clear()
         for lbl in self.current_label:
-            txt = lbl['label']
-            col = self.colorMap[self.classes[txt]]
+            txt = lbl.label
+            col = lbl.line_color
             item = qt.createListWidgetItemWithSquareIcon(txt, col, self._icon_size)
             self.polyList.addItem(item)
+
+    def getColorForLabel(self, label_name):
+        label_index = self.classes[label_name]
+        return self.colorMap[label_index]
 
     def initFileList(self, show_check_box=False):
         for idx, elem in enumerate(self.labeled_images):
@@ -180,11 +189,9 @@ class LabelMain(QMainWindow, LabelUI):
     def updateImage(self):
         """Updates the displayed image and respective label/canvas"""
         self.updateLabel()
-        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx])) #.scaled(
-            #self.centerFrame.width(),
-            #self.centerFrame.height(), Qt.KeepAspectRatio)
-
-        self.imageDisplay.setImage(image, self.current_label)
+        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx]))
+        self.imageDisplay.canvas.setPixmap(image)
+        self.imageDisplay.canvas.setLabels(self.current_label)
         self.fileList.setCurrentRow(self.img_idx)
 
     def nextImage(self):

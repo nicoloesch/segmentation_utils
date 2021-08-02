@@ -17,6 +17,7 @@ class imageViewerScene(QGraphicsScene):
     def setInitialized(self, bool_: bool):
         self._initialized = bool_
 
+    """
     def mousePressEvent(self, event) -> None:
         # TODO: There has to be a nicer method
         pos = event.scenePos()
@@ -27,6 +28,7 @@ class imageViewerScene(QGraphicsScene):
                     self.shapeSelected.emit(_item)
                 else:
                     _item.isHighlighted = False
+    """
 
     def selectionChanged(self) -> None:
         four = 4

@@ -53,7 +53,8 @@ def colormapRGB(n: int, colormap: str = 'hsv') -> List[QColor]:
 
 def createListWidgetItemWithSquareIcon(text: str, color: QColor, size: int = 5) -> QListWidgetItem:
     pixmap = QPixmap(size, size)
-    painter = QPainter(pixmap)
+    painter = QPainter()
+    painter.begin(pixmap)
     painter.setPen(color)
     painter.setBrush(color)
     painter.drawRect(QRect(0, 0, size, size))

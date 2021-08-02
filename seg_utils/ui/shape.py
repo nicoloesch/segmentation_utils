@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QGraphicsItem, QWidget
 from PyQt5.QtGui import QColor, QPainter, QPolygonF, QPen, QBrush
 from PyQt5 import QtCore
 
+from copy import deepcopy
 import typing
 
 
@@ -30,8 +31,9 @@ class Shape(QGraphicsItem):
         return f"Shape [{self.label.capitalize()}, {self.shape_type.capitalize()}]"
 
     def initColor(self, color: QColor):
-        self.line_color, self.brush_color = color, color
+        self.line_color, self.brush_color = color, deepcopy(color)
         self.brush_color.setAlphaF(0.5)
+        four = 4
 
     def initShape(self):
         if self.shape_type == 'trace':
@@ -73,14 +75,16 @@ class Shape(QGraphicsItem):
         r"""Method to store the current shape in the SQL Database"""
         pass
 
-    def paint(self, painter: QPainter): #, option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
+    def paint(self, painter: QPainter): # option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
         if self.points:
             pen = QPen(self.line_color)
             brush = QBrush(self.brush_color)
             pen.setWidth(2)  # TODO: dependent on the size of the image or something
             painter.setPen(pen)
+            """
             if self.isHighlighted:
                 painter.setBrush(brush)
+            """
 
             if self.shape_type == 'trace':
                 painter.drawPolygon(self.shape_)
@@ -101,7 +105,6 @@ class Shape(QGraphicsItem):
                 return True
 
 
-
 class VertexCollection(object):
     def __init__(self, points, line_color, brush_color):
         self.vertices = [QtCore.QPointF(*_point) for _point in points]
@@ -119,5 +122,5 @@ class VertexCollection(object):
             size = 4
             painter.drawRect(QtCore.QRectF(_vertex - QtCore.QPointF(size/2, size/2),
                                            _vertex + QtCore.QPointF(size/2, size/2)))
-
+            painter.setBrush(QBrush())
 
