@@ -22,7 +22,14 @@ def main(args):
 
 def test():
     r"""Function for testing stuff"""
-    a = [QPointF(100.0, 100.0), QPointF(50.0, 50.0)]
+    from PyQt5.QtGui import QPainterPath
+
+    path = QPainterPath()
+    path.moveTo(0.0, 0.0)
+    path.lineTo(0.0, 10.0)
+    path.lineTo(10.0, 10.0)
+    path.lineTo(10.0, 0.0)
+    path.closeSubpath()
     four = 4
 
 if __name__ == "__main__":

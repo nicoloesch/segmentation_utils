@@ -77,14 +77,12 @@ class Shape(QGraphicsItem):
 
     def paint(self, painter: QPainter): # option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
         if self.points:
-            pen = QPen(self.line_color)
-            brush = QBrush(self.brush_color)
-            pen.setWidth(2)  # TODO: dependent on the size of the image or something
-            painter.setPen(pen)
-            """
+            painter.setPen(QPen(self.line_color, 1)) # TODO: pen width depending on the image size
             if self.isHighlighted:
-                painter.setBrush(brush)
-            """
+                painter.setBrush(QBrush(self.brush_color))
+            else:
+                painter.setBrush(QBrush())
+
 
             if self.shape_type == 'trace':
                 painter.drawPolygon(self.shape_)
@@ -111,16 +109,14 @@ class VertexCollection(object):
         self.line_color = line_color
         self.brush_color = brush_color
         self.highlight_color = QtCore.Qt.white
+        self.vertex_size = 3
+
 
     def paint(self, painter: QPainter):
         for _vertex in self.vertices:
-            pen = QPen(self.line_color)
-            brush = QBrush(self.brush_color)
-            pen.setWidth(2)  # TODO: dependent on the size of the image or something
-            painter.setPen(pen)
-            painter.setBrush(brush)
-            size = 4
-            painter.drawRect(QtCore.QRectF(_vertex - QtCore.QPointF(size/2, size/2),
-                                           _vertex + QtCore.QPointF(size/2, size/2)))
-            painter.setBrush(QBrush())
+            painter.setPen(QPen(self.line_color, 2)) # TODO: width dependent on the size of the image or something
+            painter.setBrush(QBrush(self.brush_color))
+            painter.drawRect(QtCore.QRectF(_vertex - QtCore.QPointF(self.vertex_size/2, self.vertex_size/2),
+                                           _vertex + QtCore.QPointF(self.vertex_size/2, self.vertex_size/2))
+                             )
 

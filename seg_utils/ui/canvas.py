@@ -38,29 +38,26 @@ class Canvas(QtWidgets.QWidget):
     def setColors(self, colors: List[QtGui.QColor]):
         self.colorMap, self.drawNewColor = colors[:-1], colors[-1]
 
-    """
-    def wheelEvent(self, event):
-        "Responsible for Zoom.Redefines base function"
-        #if not self._empty:
-            #if self.enableZoomPan:
-        if event.angleDelta().y() > 0:
-            factor = 1.25
-            self._zoom += 1
-        else:
-            factor = 0.8
-            self._zoom -= 1
-        if self._zoom > 0:
-            self._scale = factor
-        elif self._zoom == 0:
-            self.fitInView(QRectF(0.0, 0.0, self.image_size.width(), self.image_size.height()))
-        else:
-            self._zoom = 0
+    def setHovered(self):
         self.update()
+
     """
+        def mousePressEvent(self, event) -> None:
+            # TODO: There has to be a nicer method
+            pos = event.scenePos()
+            for _item in self.items():
+                if not isinstance(_item, QGraphicsPixmapItem):
+                    if _item.contains(event.scenePos()):
+                        _item.isHighlighted = True
+                        self.shapeSelected.emit(_item)
+                    else:
+                        _item.isHighlighted = False
+        """
 
     def paintEvent(self, event) -> None:
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
+
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
         p.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)

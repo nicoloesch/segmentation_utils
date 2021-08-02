@@ -35,9 +35,14 @@ class ImageViewer(QtWidgets.QGraphicsView):
 
         # signals
         self.canvas.requestFitInView.connect(self.fitInView)
+        self.scene.shapeHovered.connect(self.canvas.setHovered)
 
     def setInitialized(self):
+        self.scene.setInitialized()
         self._empty = False
+
+    def four(self, event):
+        four = 4
 
     def fitInView(self, rect: QtCore.QRectF, mode: QtCore.Qt.AspectRatioMode = QtCore.Qt.AspectRatioMode.IgnoreAspectRatio) -> None:
         if not rect.isNull():
@@ -90,77 +95,7 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
 
 
-
-
     """
-        self.colorMap, self.drawNewColor = None, None
-        self.scene_ = imageViewerScene(self)
-        self._zoom = 0
-        self._empty = True
-        self.enableZoomPan = False
-        self.setScene(self.scene_)
-        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.setFrameShape(QFrame.NoFrame)
-        self.image_size = QSize(0,0)
-        self.classes = {}
-        self.labels = []
-        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
-
-        # Painting specific
-        self.pixmap = QPixmap()
-        self._alpha = 0.3
-        self.brush = QBrush()
-        self.brush.setStyle(Qt.SolidPattern)
-
-        self.pen = QPen()
-        self.pen.setWidth(1)
-
-        # Connect to events
-        self.scene_.shapeSelected.connect(self.highlightLabel)
-        self.scene_.shapeHovered.connect(self.highlightLabel)
-
-    def initColors(self, color_map, classes: dict):
-        Initialize colors and also the respective classes dict necessary to know which class to draw.
-        Gets called from the main class. drawNewColor is reserved if a new polygon etc. is drawn to have that
-        as an exclusive color that cant be confused with others
-        self.colorMap, self.drawNewColor = color_map[:-1], color_map[-1]
-        self.classes = classes
-
-    
-
-    def setImage(self, pixmap: QPixmap, label_list: List[dict]):
-        This function sets the image and updates the pixmap of the QGraphicsView
-        clear the scene and remove everything previously created as it is stored in the SQL database anyways
-        self.scene_.clear()
-
-        # plot the image
-        if pixmap and not pixmap.isNull():
-            self._empty = False
-            self.pixmap = pixmap
-            self.scene_.addPixmap(pixmap)
-            self.image_size = pixmap.size()
-        else:
-            self._empty = True
-            self.scene_.addPixmap(QPixmap())
-
-        # plot the labels
-        self.setLabels(label_list)
-
-        self._zoom = 0
-        self.setDragMode(QGraphicsView.NoDrag)  # disable initial dragging of the image
-        self.fitInView(QRectF(pixmap.rect()))
-
-    def setLabels(self, label_list: List[dict]):
-        This function draws the labels
-        self.labels = []
-        for _label in label_list:
-            _shape = Shape.from_dict(Shape(), _label, self.colorMap[self.classes[_label['label']]])
-            self.scene_.addItem(_shape)
-            self.labels.append(_shape)
-
     def contextMenuEvent(self, event) -> None:
         four = 4
         pass
@@ -174,25 +109,6 @@ class ImageViewer(QtWidgets.QGraphicsView):
     def highlightLabel(self, item: Shape):
         Highlights a label
         self.update()
-        
-    
-    def paintEvent(self, event) -> None:
-        p = QPainter(self.viewport())
-        p.setRenderHint(QPainter.Antialiasing)
-        p.setRenderHint(QPainter.HighQualityAntialiasing)
-        p.setRenderHint(QPainter.SmoothPixmapTransform)
-
-        p.drawPixmap(0, 0, self.pixmap)
-        if self.labels:
-            for _label in self.labels:
-                _label.paint(p)
-
-        p.end()
-    
-
-
-
-    # If i am going to include a mousePressEvent, there needs to be a filter as graphics_scene also wants to have it
     
     def mousePressEvent(self, event):
         if self._image.isUnderMouse():
