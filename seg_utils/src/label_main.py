@@ -19,7 +19,7 @@ IMAGES_DIR = "images/"
 
 
 class LabelMain(QMainWindow, LabelUI):
-    labelSelected = pyqtSignal(int)
+    sigLabelSelected = pyqtSignal(int)
 
     def __init__(self):
         super(LabelMain, self).__init__()
@@ -44,7 +44,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.connectEvents()
 
     def initActions(self):
-        # Define Actions
+        """Initialise all actions present which can be connected to buttons or menu items"""
         # TODO: some shortcuts dont work
         actionOpenDB = Action(self,
                               "Open\nDatabase",
@@ -103,13 +103,17 @@ class LabelMain(QMainWindow, LabelUI):
                                 actionTraceOutline))
 
     def connectEvents(self):
-        self.fileList.itemClicked.connect(self.fileListItemClicked)
-        self.fileSearch.textChanged.connect(self.fileListSearch)
-        self.imageDisplay.canvas.requestLabelListUpdate.connect(self.updatePolyList)
+        self.fileList.itemClicked.connect(self.handleFileListItemClicked)
+        self.fileSearch.textChanged.connect(self.handleFileListSearch)
         self.polyList.itemClicked.connect(self.handlePolyListSelection)
-        self.labelSelected.connect(self.imageDisplay.canvas.isShapeSelected)
+        self.imageDisplay.canvas.sigRequestLabelListUpdate.connect(self.handleUpdatePolyList)
+        self.imageDisplay.canvas.sigRequestFitInView.connect(self.imageDisplay.fitInView)
+        self.imageDisplay.scene.sigShapeHovered.connect(self.imageDisplay.canvas.handleShapeHovered)
+        self.imageDisplay.scene.sigShapeSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
+        self.sigLabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
 
     def initWithDatabase(self, database: str):
+        """This function is called if a correct database is selected"""
         self.basedir = pathlib.Path(database).parents[0]
         self.database = SQLiteDatabase(database)
         self.labeled_images, self.isLabeled = self.database.get_labeled_images()
@@ -129,8 +133,9 @@ class LabelMain(QMainWindow, LabelUI):
             self.classes[_class] = idx
 
     def initColors(self):
-        self.colorMap = qt.colormapRGB(n=self._num_colors)  # have a buffer for new classes
-        self.imageDisplay.canvas.setColors(self.colorMap)
+        r"""Initialise the colors for plotting and for the individual lists """
+        self.colorMap, drawNewColor = qt.colormapRGB(n=self._num_colors)  # have a buffer for new classes
+        self.imageDisplay.canvas.setNewColor(drawNewColor)
 
     def openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
@@ -145,15 +150,15 @@ class LabelMain(QMainWindow, LabelUI):
             # TODO: Exit on cancel - needs to be altered to something more useful
             sys.exit(1)
 
-    def fileListItemClicked(self):
+    def handleFileListItemClicked(self):
         """Tracks the changed item in the label List"""
         selected_file = self.fileList.currentItem().text()
         self.img_idx = self.labeled_images.index(IMAGES_DIR + selected_file)
         self.updateImage()
 
-    def fileListSearch(self):
+    def handleFileListSearch(self):
+        r"""Handles the file search. If the user types into the text box, it changes the files which are displayed"""
         text = self.fileSearch.toPlainText()
-        #lbl_list = [x for x in self.labeled_images if text in x]
         for item_idx in range(self.fileList.count()):
             if text not in self.fileList.item(item_idx).text():
                 self.fileList.item(item_idx).setHidden(True)
@@ -168,7 +173,7 @@ class LabelMain(QMainWindow, LabelUI):
                                               ) for _label in labels]
         self.polyList.updateList(self.current_label)
 
-    def updatePolyList(self, _item_idx):
+    def handleUpdatePolyList(self, _item_idx):
         for _idx in range(self.polyList.count()):
             self.polyList.item(_idx).setSelected(False)
         if _item_idx > -1:
@@ -176,13 +181,15 @@ class LabelMain(QMainWindow, LabelUI):
 
     def handlePolyListSelection(self, item):
         r"""Returns the row index within the list such that the plotter in canvas can update it"""
-        self.labelSelected.emit(self.polyList.row(item))
+        self.sigLabelSelected.emit(self.polyList.row(item))
 
     def getColorForLabel(self, label_name):
+        r"""Get a Color based on a label_name"""
         label_index = self.classes[label_name]
         return self.colorMap[label_index]
 
     def initFileList(self, show_check_box=False):
+        r"""Initialize the file list with all the entries found in the database"""
         for idx, elem in enumerate(self.labeled_images):
             if show_check_box:
                 # TODO: relative path doesnt work
@@ -202,10 +209,12 @@ class LabelMain(QMainWindow, LabelUI):
         self.fileList.setCurrentRow(self.img_idx)
 
     def nextImage(self):
+        """Display the next image"""
         self.img_idx = (self.img_idx + 1) % len(self.labeled_images)
         self.updateImage()
 
     def prevImag(self):
+        """Display the previous image"""
         self.img_idx = (self.img_idx - 1) % len(self.labeled_images)
         self.updateImage()
 

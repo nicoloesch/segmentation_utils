@@ -1,9 +1,11 @@
 import sys
+
 from PyQt5.QtWidgets import QApplication
 from seg_utils.src.label_main import LabelMain
 from seg_utils.src.selection_main import SelectionMain
 from seg_utils.src.viewer_main import ViewerMain
 import argparse
+
 
 import numpy as np
 from PyQt5.QtGui import QPolygonF
@@ -22,15 +24,10 @@ def main(args):
 
 def test():
     r"""Function for testing stuff"""
-    from PyQt5.QtGui import QPainterPath
+    from seg_utils.utils.qt import visualizeColorMap
 
-    path = QPainterPath()
-    path.moveTo(0.0, 0.0)
-    path.lineTo(0.0, 10.0)
-    path.lineTo(10.0, 10.0)
-    path.lineTo(10.0, 0.0)
-    path.closeSubpath()
-    four = 4
+    N = 20
+    #visualizeColorMap(N)
 
 if __name__ == "__main__":
 
