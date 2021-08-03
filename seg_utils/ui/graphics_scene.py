@@ -6,8 +6,8 @@ from seg_utils.ui.shape import Shape
 
 
 class imageViewerScene(QGraphicsScene):
-    shapeSelected = pyqtSignal(Shape)
-    shapeHovered = pyqtSignal()
+    shapeHovered = pyqtSignal(int)
+    shapeSelected = pyqtSignal(int)
     vertexHovered = pyqtSignal()  # TODO: implement the highlighting of the vertices
 
     def __init__(self, *args):
@@ -18,30 +18,30 @@ class imageViewerScene(QGraphicsScene):
         self._initialized = True
 
     def mousePressEvent(self, event) -> None:
-        # TODO: There has to be a nicer method
-        pos = event.scenePos()
-        for _item in self.items():
-            if not isinstance(_item, QGraphicsPixmapItem):
+        if self._initialized:
+            selected_item = -1
+            # only contains one item which is the proxy item aka the canvas
+            for _item_idx, _item in enumerate(self.items()[0].widget().labels):
+                # Check if it is in the shape
                 if _item.contains(event.scenePos()):
-                    _item.isHighlighted = True
-                    #self.shapeSelected.emit(_item)
-                else:
-                    _item.isHighlighted = False
+                    selected_item = _item_idx
 
-    def selectionChanged(self) -> None:
-        four = 4
+                # Check if it is on the path of rectangles depicting the border of the shape
+            self.shapeSelected.emit(selected_item)
+        else:
+            pass
 
     def mouseMoveEvent(self, event) -> None:
         if self._initialized:
-            for _item in self.items()[0].widget().labels:
+            highlighted_item = -1
+            for _item_idx, _item in enumerate(self.items()[0].widget().labels):
                 # Check if it is in the shape
                 if _item.contains(event.scenePos()):
-                    _item.isHighlighted = True
-                else:
-                    _item.isHighlighted = False
+                    highlighted_item = _item_idx
 
                 # Check if it is on the path of rectangles depicting the border of the shape
-
-            self.update()
+            self.shapeHovered.emit(highlighted_item)
         else:
             pass
+
+    # TODO: hovering over vertex makes it appear bigger

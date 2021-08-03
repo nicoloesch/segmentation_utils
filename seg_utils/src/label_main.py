@@ -1,10 +1,9 @@
 import sys
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon
-from PyQt5.QtGui import QPainter, QBrush, QPen, QPolygonF
-from PyQt5.QtCore import Qt, QPointF, QRect
+
 
 from seg_utils.utils.database import SQLiteDatabase
 from seg_utils.utils import qt
@@ -20,6 +19,8 @@ IMAGES_DIR = "images/"
 
 
 class LabelMain(QMainWindow, LabelUI):
+    labelSelected = pyqtSignal(int)
+
     def __init__(self):
         super(LabelMain, self).__init__()
         self.setupUI(self)
@@ -36,11 +37,11 @@ class LabelMain(QMainWindow, LabelUI):
         # color stuff
         self._num_colors = 25  # number of colors
         self.colorMap = None
-        self._icon_size = 10
 
         self._FD_Dir = '/home/nico/isys/data'  # QDir.homePath()
         self._FD_Opt = QFileDialog.DontUseNativeDialog
         self.initActions()
+        self.connectEvents()
 
     def initActions(self):
         # Define Actions
@@ -101,9 +102,12 @@ class LabelMain(QMainWindow, LabelUI):
                                 actionDrawPoly,
                                 actionTraceOutline))
 
+    def connectEvents(self):
         self.fileList.itemClicked.connect(self.fileListItemClicked)
         self.fileSearch.textChanged.connect(self.fileListSearch)
-        #self.polyList.itemClicked.connect(self.imageDisplay.polySelected)
+        self.imageDisplay.canvas.requestLabelListUpdate.connect(self.updatePolyList)
+        self.polyList.itemClicked.connect(self.handlePolyListSelection)
+        self.labelSelected.connect(self.imageDisplay.canvas.isShapeSelected)
 
     def initWithDatabase(self, database: str):
         self.basedir = pathlib.Path(database).parents[0]
@@ -120,7 +124,7 @@ class LabelMain(QMainWindow, LabelUI):
         """This function initializes the available classes in the database and updates the label list"""
         classes = self.database.get_label_classes()
         for idx, _class in enumerate(classes):
-            item = qt.createListWidgetItemWithSquareIcon(_class, self.colorMap[idx], self._icon_size)
+            item = qt.createListWidgetItemWithSquareIcon(_class, self.colorMap[idx], 10)
             self.labelList.addItem(item)
             self.classes[_class] = idx
 
@@ -156,20 +160,23 @@ class LabelMain(QMainWindow, LabelUI):
             else:
                 self.fileList.item(item_idx).setHidden(False)
 
-
-
     def updateLabel(self):
         """Updates the current displayed label/canvas"""
         labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
         self.current_label = [Shape.from_dict(Shape(), _label,
                                               line_color=self.getColorForLabel(_label['label'])
                                               ) for _label in labels]
-        self.polyList.clear()
-        for lbl in self.current_label:
-            txt = lbl.label
-            col = lbl.line_color
-            item = qt.createListWidgetItemWithSquareIcon(txt, col, self._icon_size)
-            self.polyList.addItem(item)
+        self.polyList.updateList(self.current_label)
+
+    def updatePolyList(self, _item_idx):
+        for _idx in range(self.polyList.count()):
+            self.polyList.item(_idx).setSelected(False)
+        if _item_idx > -1:
+            self.polyList.item(_item_idx).setSelected(True)
+
+    def handlePolyListSelection(self, item):
+        r"""Returns the row index within the list such that the plotter in canvas can update it"""
+        self.labelSelected.emit(self.polyList.row(item))
 
     def getColorForLabel(self, label_name):
         label_index = self.classes[label_name]

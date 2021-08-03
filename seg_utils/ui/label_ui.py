@@ -6,6 +6,7 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from seg_utils.ui.image_viewer import ImageViewer
 from seg_utils.ui.toolbar import Toolbar
+from seg_utils.ui.list_widget import ListWidget
 
 
 class LabelUI(object):
@@ -99,7 +100,7 @@ class LabelUI(object):
         self.polyLabel.setObjectName("polyLabel")
         self.polyLabel.setText("Polygons")
         self.polyLayout.addWidget(self.polyLabel)
-        self.polyList = QtWidgets.QListWidget(self.polyFrame)
+        self.polyList = ListWidget(self.polyFrame)
         self.polyList.setFrameShape(QtWidgets.QFrame.StyledPanel)
         self.polyList.setObjectName("polyList")
         self.polyLayout.addWidget(self.polyList)

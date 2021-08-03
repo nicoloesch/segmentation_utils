@@ -35,7 +35,8 @@ class ImageViewer(QtWidgets.QGraphicsView):
 
         # signals
         self.canvas.requestFitInView.connect(self.fitInView)
-        self.scene.shapeHovered.connect(self.canvas.setHovered)
+        self.scene.shapeHovered.connect(self.canvas.isShapeHovered)
+        self.scene.shapeSelected.connect(self.canvas.isShapeSelected)
 
     def setInitialized(self):
         self.scene.setInitialized()
@@ -60,7 +61,6 @@ class ImageViewer(QtWidgets.QGraphicsView):
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         bounds = self.scene.itemsBoundingRect()
         self.fitInView(bounds, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-        four = 4
 
     def wheelEvent(self, event):
         """Responsible for Zoom.Redefines base function"""
@@ -94,21 +94,12 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 self._enableZoomPan = False
                 self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
 
-
     """
     def contextMenuEvent(self, event) -> None:
         four = 4
         pass
         #contextMenu = QMenu(self)
         #action = contextMenu.exec_(self.mapToGlobal())
-
-    def polySelected(self, item) -> None:
-        Select Polygon from list and highlight it
-        pass
-
-    def highlightLabel(self, item: Shape):
-        Highlights a label
-        self.update()
     
     def mousePressEvent(self, event):
         if self._image.isUnderMouse():

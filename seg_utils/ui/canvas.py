@@ -12,13 +12,13 @@ class Canvas(QtWidgets.QWidget):
     r"""Base drawing widget as it should be instantiated and then connected to a scene
      https://forum.qt.io/topic/93327/how-can-i-use-qpainter-to-paint-on-qgraphicsview/3
      """
-    # Place signals here
     requestFitInView = QtCore.pyqtSignal(QtCore.QRectF)
+    requestLabelListUpdate = QtCore.pyqtSignal(int)
 
     def __init__(self, *args, **kwargs):
         super(Canvas, self).__init__(*args, **kwargs)
         self.colorMap, self.drawNewColor = None, None
-        self.labels = []
+        self.labels = [Shape]
         self.pixmap = QtGui.QPixmap()
 
     def setPixmap(self, pixmap: QtGui.QPixmap):
@@ -38,21 +38,31 @@ class Canvas(QtWidgets.QWidget):
     def setColors(self, colors: List[QtGui.QColor]):
         self.colorMap, self.drawNewColor = colors[:-1], colors[-1]
 
-    def setHovered(self):
+    @QtCore.pyqtSlot(int)
+    def isShapeHovered(self, _item_idx: int):
+        for label in self.labels:
+            label.isHighlighted = False
+        if _item_idx > -1:
+            self.labels[_item_idx].isHighlighted = True
         self.update()
 
-    """
-        def mousePressEvent(self, event) -> None:
-            # TODO: There has to be a nicer method
-            pos = event.scenePos()
-            for _item in self.items():
-                if not isinstance(_item, QGraphicsPixmapItem):
-                    if _item.contains(event.scenePos()):
-                        _item.isHighlighted = True
-                        self.shapeSelected.emit(_item)
-                    else:
-                        _item.isHighlighted = False
-        """
+    @QtCore.pyqtSlot(int)
+    def isShapeSelected(self, _item_idx: int):
+        for label in self.labels:
+            label.isSelected = False
+        if _item_idx > -1:
+            self.labels[_item_idx].isSelected = True
+        self.requestLabelListUpdate.emit(_item_idx)
+        self.isVertexHighlighted(_item_idx)
+        self.update()
+
+    @QtCore.pyqtSlot(int)
+    def isVertexHighlighted(self, _item_idx: int):
+        r"""Only highlighted or not no matter if clicked or just hovered"""
+        for _label in self.labels:
+            _label.vertices.isHighlighted = False
+        if _item_idx > -1:
+            self.labels[_item_idx].vertices.isHighlighted = True
 
     def paintEvent(self, event) -> None:
         if not self.pixmap:
@@ -68,5 +78,4 @@ class Canvas(QtWidgets.QWidget):
                 _label.paint(p)
 
         p.end()
-        #self.requestFitInView.emit(QtCore.QRectF(self.pixmap.rect()))
 
