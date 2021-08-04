@@ -1,15 +1,18 @@
-from PyQt5.QtWidgets import QGraphicsItem, QWidget
-from PyQt5.QtGui import QColor, QPainter, QPolygonF, QPen, QBrush, QPainterPath
+from PyQt5.QtWidgets import QGraphicsItem
+from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
 from PyQt5 import QtCore
 
 from copy import deepcopy
-import typing
+from typing import Tuple
+import numpy as np
+
+from seg_utils.utils.qt import closestEuclideanDistance
 
 
 class Shape(QGraphicsItem):
     def __init__(self,
                  label: str = None,
-                 points=None,
+                 points: np.ndarray = np.array([]),
                  line_color: QColor = None,
                  shape_type: str = None,
                  flags=None,
@@ -21,7 +24,7 @@ class Shape(QGraphicsItem):
         self.flags = flags
         self.group_id = group_id
         self.line_color, self.brush_color = None, None
-        self.selected_color = QtCore.Qt.white
+        self.selected_color = QtCore.Qt.GlobalColor.white
         self.path = None
         self.vertices = None
         self._bounding_rect = None
@@ -70,7 +73,7 @@ class Shape(QGraphicsItem):
         if 'label' in label_dict:
             self.label = label_dict['label']
         if 'points' in label_dict:
-            self.points = label_dict['points']
+            self.points = np.asarray(label_dict['points'])
         if 'shape_type' in label_dict:
             self.shape_type = label_dict['shape_type']
         if 'flags' in label_dict:
@@ -87,7 +90,7 @@ class Shape(QGraphicsItem):
         pass
 
     def paint(self, painter: QPainter): # option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
-        if self.points:
+        if self.points.size > 0:
             if not self.isSelected:
                 painter.setPen(QPen(self.line_color, 1))  # TODO: pen width depending on the image size
             else:
@@ -121,28 +124,47 @@ class Shape(QGraphicsItem):
 
 class VertexCollection(object):
     def __init__(self, points, line_color, brush_color):
-        self.vertices = [QtCore.QPointF(*_point) for _point in points]
+        self.vertices = points
         self.line_color = line_color
         self.brush_color = brush_color
-        self.highlight_color = QtCore.Qt.white
-        self.vertex_size = 3
+        self.highlight_color = QtCore.Qt.GlobalColor.white
+        self.vertex_size = 2
+        self._highlight_size = 0.1
         self.isHighlighted = False
-        self.selectedVertex = -1  # value for the selected vertex to appear bigger
+        self.selectedVertex = -1
 
     def paint(self, painter: QPainter):
-        for _idx, _vertex in enumerate(self.vertices):  # TODO: width dependent on the size of the image or something
-            painter.setPen(QPen(self.line_color, 1))
-            if self.isHighlighted:
-                painter.setBrush(QBrush(self.highlight_color))
-            else:
-                painter.setBrush(QBrush(self.brush_color))
+        for _idx, _vertex in enumerate(self.vertices):
+            qtpoint = QtCore.QPointF(*_vertex.tolist())
+            painter.setPen(QPen(self.line_color, 0.5))  # TODO: width dependent on the size of the image or something
+            painter.setBrush(QBrush(self.brush_color))
 
             if _idx == self.selectedVertex:
-                painter.drawRect(QtCore.QRectF(_vertex - QtCore.QPointF(self.vertex_size+2 / 2, self.vertex_size+2 / 2),
-                                               _vertex + QtCore.QPointF(self.vertex_size+2 / 2, self.vertex_size+2 / 2))
-                                 )
+                # highlight only the selected vertex
+                painter.setBrush(QBrush(self.highlight_color))
+                # size = (self.vertex_size+self._highlight_size) / 2
+                size = self.vertex_size / 2
             else:
-                painter.drawRect(QtCore.QRectF(_vertex - QtCore.QPointF(self.vertex_size/2, self.vertex_size/2),
-                                               _vertex + QtCore.QPointF(self.vertex_size/2, self.vertex_size/2))
-                                 )
+                size = self.vertex_size / 2  # determines the diagonal of the rectangle
+            painter.drawRect(QtCore.QRectF(qtpoint - QtCore.QPointF(size, size),
+                                           qtpoint + QtCore.QPointF(size, size)))
+
+    def closestVertex(self, point: np.ndarray) -> int:
+        """Calculate the euclidean distance between a point and all vertices and return the index of
+        the closest node to the point"""
+        return closestEuclideanDistance(point, self.vertices)
+
+    def isOnVertex(self, point: QtCore.QPointF) -> Tuple[bool, int]:
+        """Check if a point is within the closest vertex rectangle"""
+        closestVertex = self.closestVertex(np.asarray([point.x(), point.y()]))
+        vertexCenter = QtCore.QPointF(*self.vertices[closestVertex].tolist())
+        #size = (self.vertex_size+self._highlight_size) / 2
+        size = self.vertex_size / 2
+        vertexRect = QtCore.QRectF(vertexCenter - QtCore.QPointF(size, size),
+                                   vertexCenter + QtCore.QPointF(size, size))
+
+        if vertexRect.contains(point):
+            return True, closestVertex
+        else:
+            return False, -1
 

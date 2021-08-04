@@ -1,5 +1,6 @@
 import os.path as osp
 
+import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem
 from PyQt5.QtGui import QPixmap, QIcon, QColor
@@ -84,6 +85,11 @@ def visualizeColorMap(n: int):
     ax.annotate("New\nColor", ((i % 7 + 1) + 0.5, i // 7 + 1 + 0.5), color='w', weight='bold',
                 fontsize=6, ha='center', va='center')
     plt.show()
+
+
+def closestEuclideanDistance(point: np.ndarray, points: np.ndarray):
+    dist_2 = np.sum((points - point) ** 2, axis=1)
+    return int(np.argmin(dist_2))
 
 
 def createListWidgetItemWithSquareIcon(text: str, color: QColor, size: int = 5) -> QListWidgetItem:

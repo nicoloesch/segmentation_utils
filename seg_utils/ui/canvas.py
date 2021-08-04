@@ -39,29 +39,34 @@ class Canvas(QtWidgets.QWidget):
 
     @QtCore.pyqtSlot(int)
     def handleShapeHovered(self, _item_idx: int):
-        for label in self.labels:
-            label.isHighlighted = False
+        self.resetHighlight()
         if _item_idx > -1:
             self.labels[_item_idx].isHighlighted = True
         self.update()
 
-    @QtCore.pyqtSlot(int)
-    def handleShapeSelected(self, _item_idx: int):
-        for label in self.labels:
-            label.isSelected = False
-        if _item_idx > -1:
-            self.labels[_item_idx].isSelected = True
-        self.sigRequestLabelListUpdate.emit(_item_idx)
-        self.handleVertexHighlighted(_item_idx)
+    def handleShapeSelected(self, item_idx: int, shape_idx: int, vertex_idx: int):
+        self.resetSelection()
+        if item_idx > -1:
+            self.labels[item_idx].isSelected = True
+        self.sigRequestLabelListUpdate.emit(item_idx)
+        self.handleVertexHighlighted(shape_idx, vertex_idx)
         self.update()
 
-    @QtCore.pyqtSlot(int)
-    def handleVertexHighlighted(self, _item_idx: int):
+    def handleVertexHighlighted(self, shape_idx: int, vertex_idx: int):
         r"""Only highlighted or not no matter if clicked or just hovered"""
-        for _label in self.labels:
-            _label.vertices.isHighlighted = False
-        if _item_idx > -1:
-            self.labels[_item_idx].vertices.isHighlighted = True
+        if shape_idx > -1:
+            self.labels[shape_idx].vertices.isHighlighted = True
+            self.labels[shape_idx].vertices.selectedVertex = vertex_idx
+
+    def resetHighlight(self):
+        for label in self.labels:
+            label.isHighlighted = False
+            label.vertices.isHighlighted = False
+
+    def resetSelection(self):
+        for label in self.labels:
+            label.isSelected = False
+            label.vertices.selectedVertex = -1
 
     def paintEvent(self, event) -> None:
         if not self.pixmap:

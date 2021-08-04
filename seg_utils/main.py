@@ -22,15 +22,23 @@ def main(args):
     sys.exit(app.exec_())
 
 
+def closest_node(node, nodes):
+    dist_2 = np.sum((nodes - node)**2, axis=1)
+    return np.argmin(dist_2)
+
+
 def test():
     r"""Function for testing stuff"""
-    from seg_utils.utils.qt import visualizeColorMap
+    vertices = np.array([[0, 0],
+                         [1, 0],
+                         [1, 1],
+                         [0, 1]])
+    testPoint = np.array([1.0, 0])
 
-    N = 20
-    #visualizeColorMap(N)
+    a = closest_node(testPoint, vertices)
+    four = 4
 
 if __name__ == "__main__":
-
     test()
     # Add arguments to argument parser
     parser = argparse.ArgumentParser()
