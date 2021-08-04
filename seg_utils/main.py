@@ -38,6 +38,7 @@ def test():
     a = closest_node(testPoint, vertices)
     four = 4
 
+
 if __name__ == "__main__":
     test()
     # Add arguments to argument parser

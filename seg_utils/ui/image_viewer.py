@@ -2,48 +2,46 @@ import sys
 from typing import List
 from copy import deepcopy
 
-from PyQt5 import QtWidgets
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-
-import imgviz
+from PyQt5.QtWidgets import QGraphicsView
+from PyQt5.QtGui import QResizeEvent
+from PyQt5.QtCore import QSize, Qt, QRectF
 
 
-from seg_utils.ui.graphics_scene import imageViewerScene
+from seg_utils.ui.graphics_scene import ImageViewerScene
 from seg_utils.ui.shape import Shape
 from seg_utils.ui.canvas import Canvas
 
 
-class ImageViewer(QtWidgets.QGraphicsView):
+class ImageViewer(QGraphicsView):
 
     def __init__(self, *args):
         super(ImageViewer, self).__init__(*args)
         self.canvas = Canvas()
-        self.scene = imageViewerScene(self)
-        self.canvas.resize(QtCore.QSize(0, 0))  # Makes it invisible
+        self.scene = ImageViewerScene(self)
+        self.canvas.resize(QSize(0, 0))  # Makes it invisible
         self.proxy = self.scene.addWidget(self.canvas)
         self.setScene(self.scene)
-        self.isEmpty = True
+        self.b_isEmpty = True
 
-        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
 
         # Protected Item
         self._zoom = 0
         self._enableZoomPan = False
 
     def setInitialized(self):
-        self.scene.isInitialized = True
-        self.isEmpty = False
+        self.scene.b_isInitialized = True
+        self.b_isEmpty = False
 
-    def fitInView(self, rect: QtCore.QRectF, mode: QtCore.Qt.AspectRatioMode = QtCore.Qt.AspectRatioMode.IgnoreAspectRatio) -> None:
+    def fitInView(self, rect: QRectF, mode: Qt.AspectRatioMode = Qt.AspectRatioMode.IgnoreAspectRatio) -> None:
         if not rect.isNull():
             self.setSceneRect(rect)
-            if not self.isEmpty:
-                unity = self.transform().mapRect(QtCore.QRectF(0, 0, 1, 1))
+            if not self.b_isEmpty:
+                unity = self.transform().mapRect(QRectF(0, 0, 1, 1))
                 self.scale(1 / unity.width(), 1 / unity.height())
                 viewrect = self.viewport().rect()
                 scenerect = self.transform().mapRect(rect)
@@ -52,13 +50,13 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 self.scale(factor, factor)
             self._zoom = 0
 
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
+    def resizeEvent(self, event: QResizeEvent) -> None:
         bounds = self.scene.itemsBoundingRect()
-        self.fitInView(bounds, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        self.fitInView(bounds, Qt.AspectRatioMode.KeepAspectRatio)
 
     def wheelEvent(self, event):
         """Responsible for Zoom.Redefines base function"""
-        if not self.isEmpty:
+        if not self.b_isEmpty:
             if self._enableZoomPan:
                 if event.angleDelta().y() > 0:
                     # Forward Scroll
@@ -72,21 +70,21 @@ class ImageViewer(QtWidgets.QGraphicsView):
                 if self._zoom > 0:
                     self.scale(factor, factor)
                 elif self._zoom == 0:
-                    self.fitInView(QtCore.QRectF(self.canvas.rect()))
+                    self.fitInView(QRectF(self.canvas.rect()))
                 else:
                     self._zoom = 0
 
     def keyPressEvent(self, event) -> None:
-        if not self.isEmpty:
-            if event.key() == QtCore.Qt.Key.Key_Control:
+        if not self.b_isEmpty:
+            if event.key() == Qt.Key.Key_Control:
                 self._enableZoomPan = True
-                self.setDragMode(QtWidgets.QGraphicsView.ScrollHandDrag)
+                self.setDragMode(QGraphicsView.ScrollHandDrag)
 
     def keyReleaseEvent(self, event) -> None:
-        if not self.isEmpty:
-            if event.key() == QtCore.Qt.Key.Key_Control:
+        if not self.b_isEmpty:
+            if event.key() == Qt.Key.Key_Control:
                 self._enableZoomPan = False
-                self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+                self.setDragMode(QGraphicsView.NoDrag)
 
     """
     def contextMenuEvent(self, event) -> None:

@@ -144,7 +144,7 @@ class LabelUI(object):
         self.fileLayout.addWidget(self.fileSearch)
         self.fileList = QtWidgets.QListWidget(self.fileFrame)
         self.fileList.setIconSize(QtCore.QSize(7, 7))
-        self.fileList.setItemAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.fileList.setItemAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         self.fileList.setObjectName("fileList")
         self.fileLayout.addWidget(self.fileList)
         self.rightMenuLayout.addWidget(self.fileFrame)

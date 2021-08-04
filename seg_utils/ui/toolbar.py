@@ -1,23 +1,26 @@
-from PyQt5 import QtWidgets
-from PyQt5 import QtCore
+from PyQt5.QtWidgets import QWidgetAction, QToolButton, QToolBar
+from PyQt5.QtCore import QSize, Qt
 from typing import Iterable
 
+from seg_utils.src.actions import Action
+from seg_utils.ui.tool_button import ToolbarButton
 
-class Toolbar(QtWidgets.QToolBar):
+
+class Toolbar(QToolBar):
     def __init__(self, parent):
         super(Toolbar, self).__init__(parent)
         self.actionsDict = {}  # This is a lookup table to match the buttons to the numbers they got added
 
-        self.setMinimumSize(QtCore.QSize(80, 100))
-        self.setMaximumSize(QtCore.QSize(80, 16777215))
+        self.setMinimumSize(QSize(80, 100))
+        self.setMaximumSize(QSize(80, 16777215))
         self.setAutoFillBackground(False)
         self.setStyleSheet("background-color: rgb(186, 189, 182);")
         self.setMovable(False)
-        self.setAllowedAreas(QtCore.Qt.ToolBarArea.LeftToolBarArea)
-        self.setOrientation(QtCore.Qt.Orientation.Vertical)
-        self.setLayoutDirection(QtCore.Qt.LayoutDirection.LeftToRight)
-        self.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
-        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.DefaultContextMenu)
+        self.setAllowedAreas(Qt.ToolBarArea.LeftToolBarArea)
+        self.setOrientation(Qt.Orientation.Vertical)
+        self.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextUnderIcon)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
         self.setObjectName("toolBar")
 
     def initMargins(self):
@@ -28,10 +31,16 @@ class Toolbar(QtWidgets.QToolBar):
         self.layout().setSpacing(2)
         self.layout().setContentsMargins(*m)
 
-    def addAction(self, action):
-        if isinstance(action, QtWidgets.QWidgetAction):
+    def addAction(self, action: Action):
+        r"""Because I want a physical button in the toolbar, i need to create a widget"""
+        if isinstance(action, QWidgetAction):
             return super(Toolbar, self).addAction(action)
-        btn = QtWidgets.QToolButton()
+
+        if action.isCheckable():
+            btn = ToolbarButton()
+            # This enables onw functionality with drawing
+        else:
+            btn = QToolButton()
         btn.setDefaultAction(action)
         btn.setToolButtonStyle(self.toolButtonStyle())
         btn.setMinimumSize(80, 70)
@@ -41,16 +50,21 @@ class Toolbar(QtWidgets.QToolBar):
         actionText = action.text().replace('\n', '')
         self.actionsDict[actionText] = len(self.actionsDict)
 
-        """
-        # center align
-        for i in range(self.layout().count()):
-            if isinstance(
-                self.layout().itemAt(i).widget(), QtWidgets.QToolButton
-            ):
-                self.layout().itemAt(i).setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        """
+    def getWidgetForAction(self, action_str: str):
+        if action_str not in self.actionsDict:
+            raise AttributeError(f"Action '{action_str}' not available. Available actions are"
+                                 f"\n{[act for act in self.actionsDict.keys()]}")
+        else:
+            return self.widgetForAction(self.actions()[self.actionsDict[action_str]])
 
-    def addActions(self, actions: Iterable[QtWidgets.QAction]) -> None:
+    def getAction(self, action_str: str) -> Action:
+        if action_str not in self.actionsDict:
+            raise AttributeError(f"Action '{action_str}' not available. Available actions are"
+                                 f"\n{[act for act in self.actionsDict.keys()]}")
+        else:
+            return self.widgetForAction(self.actions()[self.actionsDict[action_str]]).defaultAction()
+
+    def addActions(self, actions: Iterable[Action]) -> None:
         for action in actions:
             if action is None:
                 self.addSeparator()
