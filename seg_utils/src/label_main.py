@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtCore import pyqtSignal, QPointF, QRectF, Qt
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QDialog, QLabel
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtGui import QPixmap, QIcon
 
 from typing import Tuple, List, Union
@@ -12,7 +12,7 @@ from seg_utils.ui.toolbar import Toolbar
 from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
 from seg_utils.ui.shape import Shape
-from seg_utils.ui.shape_dialog import NewShapeDialog
+from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox
 
 import pathlib
 
@@ -169,9 +169,9 @@ class LabelMain(QMainWindow, LabelUI):
         r"""This function initializes the labels for the current image. Necessary to have only one call to the database
         if the image is changed"""
         labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
-        self.current_labels = [Shape.from_dict
-                              (Shape(), _label, color=self.getColorForLabel(_label['label']))
-                              for _label in labels]
+        self.current_labels = [Shape.from_dict(
+            Shape(), _label, color=self.getColorForLabel(_label['label']))
+            for _label in labels]
         self.polyList.updateList(self.current_labels)
 
     def initImage(self):
@@ -239,6 +239,9 @@ class LabelMain(QMainWindow, LabelUI):
             if self.toolBar.widgetForAction(act).isChecked():
                 self.toolBar.widgetForAction(act).setChecked(Qt.Unchecked)
 
+        # TODO: not sure if here is the right call tho - could be done more nicely i think
+        self.imageDisplay.scene.setMode(self.EDIT)
+
     def setOtherButtonsUnchecked(self, action: str):
         """Set all buttons except the button defined by the action into the unchecked state"""
         for act in self.toolBar.actions():
@@ -275,16 +278,23 @@ class LabelMain(QMainWindow, LabelUI):
 
     def on_nextImage(self):
         """Display the next image"""
-        # TODO: dialog which makes the user select to save the image if there are changes
-        self.img_idx = (self.img_idx + 1) % len(self.labeled_images)
-        self.initImage()
-        self.setButtonsUnchecked()
+        dlgResult = self.checkForChanges()
+        if dlgResult == QMessageBox.AcceptRole or dlgResult == QMessageBox.DestructiveRole:
+            if dlgResult == QMessageBox.AcceptRole:
+                self.on_saveLabel()
+            self.img_idx = (self.img_idx + 1) % len(self.labeled_images)
+            self.initImage()
+            self.setButtonsUnchecked()
 
     def on_prevImag(self):
         """Display the previous image"""
-        self.img_idx = (self.img_idx - 1) % len(self.labeled_images)
-        self.initImage()
-        self.setButtonsUnchecked()
+        dlgResult = self.checkForChanges()
+        if dlgResult == QMessageBox.AcceptRole or dlgResult == QMessageBox.DestructiveRole:
+            if dlgResult == QMessageBox.AcceptRole:
+                self.on_saveLabel()
+            self.img_idx = (self.img_idx - 1) % len(self.labeled_images)
+            self.initImage()
+            self.setButtonsUnchecked()
 
     def on_drawPolygon(self):
         """Draw own Polygon"""
@@ -295,16 +305,16 @@ class LabelMain(QMainWindow, LabelUI):
         action = self.toolBar.getWidgetForAction(f'Draw{shape_type.capitalize()}')
         self.setOtherButtonsUnchecked(action)
         if action.isChecked():
-            self.imageDisplay.scene.mode = self.CREATE
+            self.imageDisplay.scene.setMode(self.CREATE)
             self.imageDisplay.scene.setShapeType(shape_type)
         else:
-            self.imageDisplay.scene.mode = self.EDIT
+            self.imageDisplay.scene.setMode(self.EDIT)
 
     def on_Drawing(self, points: List[QPointF], shape_type: str):
         r"""Function to handle the drawing event"""
         action = f'Draw{shape_type.capitalize()}'
         if self.toolBar.getWidgetForAction(action).isChecked():
-            self.imageDisplay.scene.mode = self.CREATE
+            self.imageDisplay.scene.setMode(self.CREATE)
             self.imageDisplay.scene.setShapeType(shape_type)
             if points:
                 self.imageDisplay.canvas.setTempLabel(points, shape_type)
@@ -323,11 +333,10 @@ class LabelMain(QMainWindow, LabelUI):
         """Trace the outline of a shape"""
         four = 4
 
-    def checkForChanges(self) -> bool:
+    def checkForChanges(self) -> int:
         r"""Check for changes with the database
 
-            :returns: Returns True if there are changes between labels of the database and the current labels, else
-            False
+            :returns: 0 if accepted or no changes, 1 if cancelled and 2 if dimissed
         """
         sql_labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
         sql_labels = [Shape.from_dict
@@ -335,9 +344,13 @@ class LabelMain(QMainWindow, LabelUI):
                       for _label in sql_labels]
 
         if sql_labels == self.current_labels:
-            return False
+            return 0
         else:
-            return True
+            d = ForgotToSaveMessageBox(self)
+            d.exec()
+            return d.result()
+
+
 
     @staticmethod
     def ShapeToDict(shape: Shape) -> Tuple[dict, str]:

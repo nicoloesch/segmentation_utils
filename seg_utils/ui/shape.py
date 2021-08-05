@@ -39,6 +39,12 @@ class Shape(QGraphicsItem):
     def __repr__(self):
         return f"Shape [{self.label.capitalize()}, {self.shape_type.capitalize()}]"
 
+    def __eq__(self, other):
+        if self.points == other.points and self.label == other.label:
+            return True
+        else:
+            return False
+
     def initShape(self):
         if self.shape_type in ['trace', 'rectangle']:
             if self.shape_type == 'rectangle' and len(self.points) == 2:

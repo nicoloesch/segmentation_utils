@@ -1,9 +1,11 @@
-from PyQt5.QtWidgets import QDialog, QPushButton, QWidget, QLabel, QVBoxLayout, QTextEdit, QHBoxLayout, QDialogButtonBox
+from PyQt5.QtWidgets import (QDialog, QPushButton, QWidget, QLabel,
+                             QVBoxLayout, QTextEdit, QHBoxLayout, QDialogButtonBox,
+                             QStyle, QMessageBox)
 from PyQt5.QtCore import QSize, QPoint
 from PyQt5.QtGui import QFont
 
 from seg_utils.ui.list_widget import ListWidget
-from seg_utils.utils.qt import createListWidgetItemWithSquareIcon
+from seg_utils.utils.qt import createListWidgetItemWithSquareIcon, getIcon
 
 
 class NewShapeDialog(QDialog):
@@ -61,3 +63,28 @@ class NewShapeDialog(QDialog):
 
     def on_ButtonClicked(self):
         self.close()
+
+
+class ForgotToSaveMessageBox(QMessageBox):
+    def __init__(self, parent: QWidget, *args):
+        super(ForgotToSaveMessageBox, self).__init__(*args)
+
+        saveButton = QPushButton(getIcon('save'), "Save Changes")
+        dismissButton = QPushButton(self.style().standardIcon(QStyle.SP_DialogDiscardButton), "Dismiss Changes")
+        cancelButton = QPushButton(self.style().standardIcon(QStyle.SP_DialogCancelButton), "Cancel")
+
+        self.setWindowTitle("Caution: Unsaved Changes")
+        self.setText("Unsaved Changes: How do you want to progress?")
+
+        # NOTE FOR SOME REASON THE ORDER IS IMPORTANT DESPITE THE ROLE - IDK WHY
+        self.addButton(saveButton, QMessageBox.AcceptRole)
+        self.addButton(cancelButton, QMessageBox.RejectRole)
+        self.addButton(dismissButton, QMessageBox.DestructiveRole)
+
+        self.moveToCenter(parent.pos(), parent.size())
+
+    def moveToCenter(self, parent_pos: QPoint, parent_size: QSize):
+        r"""Moves the QDialog to the center of the parent Widget.
+        As self.move moves the upper left corner to the place, one needs to subtract the own size of the window"""
+        self.move(parent_pos.x() + parent_size.width()/2 - self.size().width()/2,
+                  parent_pos.y() + parent_size.height()/2 - self.size().height()/2)

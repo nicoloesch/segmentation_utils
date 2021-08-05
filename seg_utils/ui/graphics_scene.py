@@ -33,6 +33,10 @@ class ImageViewerScene(QGraphicsScene):
     def setShapeType(self, shape_type: str):
         self.shape_type = shape_type
 
+    def setMode(self, mode: int):
+        assert mode in [self.CREATE, self.EDIT]
+        self.mode = mode
+
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for pressing the mouse. Currently only for selecting the shapes"""
         if self.b_isInitialized:
