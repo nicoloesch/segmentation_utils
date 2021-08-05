@@ -12,8 +12,9 @@ class ImageViewerScene(QGraphicsScene):
     sig_ShapeHovered = pyqtSignal(int)
     sig_ShapeSelected = pyqtSignal(int, int, int)
     sig_VertexHovered = pyqtSignal()  # TODO: MAYBE implement the highlighting of the vertices
-    sig_RectangleDrawing = pyqtSignal(QPointF, QPointF)
-    sig_RectangleDone = pyqtSignal(list)
+
+    sig_Drawing = pyqtSignal(list, str)
+    sig_DrawingDone = pyqtSignal(list, str)
 
     CREATE, EDIT = 0, 1
 
@@ -21,44 +22,46 @@ class ImageViewerScene(QGraphicsScene):
         super(ImageViewerScene, self).__init__(*args)
         self.b_isInitialized = False
         self.mode = self.EDIT
-
+        self.shape_type = None
         self.starting_point = QPointF()
+        self._leftMouseButtonPressed = False
 
-    def drawing(self) -> bool:
+    def isInDrawingMode(self) -> bool:
         """Returns true if currently in drawing mode"""
         return self.mode == self.CREATE
+
+    def setShapeType(self, shape_type: str):
+        self.shape_type = shape_type
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for pressing the mouse. Currently only for selecting the shapes"""
         if self.b_isInitialized:
-            if self.drawing():
-                self.starting_point = event.scenePos()
-            else:
-                hShape, vShape, vNum = self.isMouseOnShape(event)
-                self.sig_ShapeSelected.emit(hShape, vShape, vNum)
+            if event.button() == Qt.MouseButton.LeftButton:
+                if self.isInDrawingMode():
+                    self._leftMouseButtonPressed = True
+                    self.starting_point = event.scenePos()
+                else:
+                    hShape, vShape, vNum = self.isMouseOnShape(event)
+                    self.sig_ShapeSelected.emit(hShape, vShape, vNum)
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for moving the mouse. Currently only for selecting the shapes
         whilst hovering over them"""
         if self.b_isInitialized:
-            if self.drawing():
-                self.sig_RectangleDrawing.emit(self.starting_point, event.scenePos())
+            if self.isInDrawingMode():
+                if self._leftMouseButtonPressed:
+                    self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
             else:
                 hShape, vShape, vNum = self.isMouseOnShape(event)
                 self.sig_ShapeHovered.emit(hShape)
 
     def mouseReleaseEvent(self, event) -> None:
         if self.b_isInitialized:
-            if self.drawing():
-                # TODO: currently only rectangle drawing
-                mousePos = event.scenePos()
-                # create the rectangle with all four bounding points
-                points = [QPointF(self.starting_point.x(), self.starting_point.y()),
-                          QPointF(self.starting_point.x(), mousePos.y()),
-                          QPointF(mousePos.x(), mousePos.y()),
-                          QPointF(mousePos.x(), self.starting_point.y()),]
-                self.sig_RectangleDone.emit(points)
-                self.starting_point = QPointF()
+            if event.button() == Qt.MouseButton.LeftButton:
+                if self.isInDrawingMode():
+                    self._leftMouseButtonPressed = False
+                    self.sig_DrawingDone.emit([self.starting_point, event.scenePos()], self.shape_type)
+                    self.starting_point = QPointF()
 
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
         r"""Check if event position is within the boundaries of a shape

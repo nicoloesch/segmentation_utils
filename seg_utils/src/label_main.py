@@ -91,14 +91,14 @@ class LabelMain(QMainWindow, LabelUI):
 
         actionDrawCircle = Action(self,
                                   "Draw\nCircle",
-                                  self.on_drawCircle,
+                                  lambda: self.on_drawStart('circle'),
                                   icon="circle",
                                   tip="Draw Circle",
                                   checkable=True)
 
         actionDrawRectangle = Action(self,
                                      "Draw\nRectangle",
-                                     lambda: self.on_drawRectangle(QPointF(), QPointF()),
+                                     lambda: self.on_drawStart('rectangle'),
                                      icon="square",
                                      tip="Draw Rectangle",
                                      checkable=True)
@@ -125,8 +125,8 @@ class LabelMain(QMainWindow, LabelUI):
         self.sig_LabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
 
         # Drawing Events
-        self.imageDisplay.scene.sig_RectangleDrawing.connect(self.on_drawRectangle)
-        self.imageDisplay.scene.sig_RectangleDone.connect(self.on_drawEnd)
+        self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
+        self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -233,9 +233,16 @@ class LabelMain(QMainWindow, LabelUI):
         #   and currently it crashes everything if clicked again
         self.toolBar.getWidgetForAction('OpenDatabase').setEnabled(False)
 
-    def setButtonsUnChecked(self):
+    def setButtonsUnchecked(self):
+        """Set all Buttons into the Unchecked state"""
         for act in self.toolBar.actions():
             if self.toolBar.widgetForAction(act).isChecked():
+                self.toolBar.widgetForAction(act).setChecked(Qt.Unchecked)
+
+    def setOtherButtonsUnchecked(self, action: str):
+        """Set all buttons except the button defined by the action into the unchecked state"""
+        for act in self.toolBar.actions():
+            if not self.toolBar.widgetForAction(act) == action:
                 self.toolBar.widgetForAction(act).setChecked(Qt.Unchecked)
 
     def on_openDatabase(self, fddirectory, fdoptions):
@@ -271,39 +278,44 @@ class LabelMain(QMainWindow, LabelUI):
         # TODO: dialog which makes the user select to save the image if there are changes
         self.img_idx = (self.img_idx + 1) % len(self.labeled_images)
         self.initImage()
-        self.setButtonsUnChecked()
+        self.setButtonsUnchecked()
 
     def on_prevImag(self):
         """Display the previous image"""
         self.img_idx = (self.img_idx - 1) % len(self.labeled_images)
         self.initImage()
-        self.setButtonsUnChecked()
+        self.setButtonsUnchecked()
 
     def on_drawPolygon(self):
         """Draw own Polygon"""
         four = 4
 
-    def on_drawCircle(self):
-        """Draw own Circle"""
-        four = 4
-
-    def on_drawRectangle(self, upper_left: QPointF = QPointF(), lower_right: QPointF = QPointF()):
-        """Draw own Rectangle"""
-        if self.toolBar.getWidgetForAction('DrawRectangle').isChecked():
-            # Case for enabled drawing
+    def on_drawStart(self, shape_type: str):
+        r"""Function to enable the drawing but also uncheck all other buttons"""
+        action = self.toolBar.getWidgetForAction(f'Draw{shape_type.capitalize()}')
+        self.setOtherButtonsUnchecked(action)
+        if action.isChecked():
             self.imageDisplay.scene.mode = self.CREATE
-            if not upper_left.isNull() and not upper_left.isNull():
-                self.imageDisplay.canvas.setTempLabel([upper_left, lower_right], shape_type='rectangle')
+            self.imageDisplay.scene.setShapeType(shape_type)
         else:
             self.imageDisplay.scene.mode = self.EDIT
 
-    def on_drawEnd(self, points: List[QPointF]):
+    def on_Drawing(self, points: List[QPointF], shape_type: str):
+        r"""Function to handle the drawing event"""
+        action = f'Draw{shape_type.capitalize()}'
+        if self.toolBar.getWidgetForAction(action).isChecked():
+            self.imageDisplay.scene.mode = self.CREATE
+            self.imageDisplay.scene.setShapeType(shape_type)
+            if points:
+                self.imageDisplay.canvas.setTempLabel(points, shape_type)
+
+    def on_drawEnd(self, points: List[QPointF], shape_type: str):
         d = NewShapeDialog(self)
         d.exec()
 
         if d.class_name:
             shape = Shape(label=d.class_name, points=points,
-                          color=self.getColorForLabel(d.class_name), shape_type="rectangle")
+                          color=self.getColorForLabel(d.class_name), shape_type=shape_type)
             self.updateLabels(shape)
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
 

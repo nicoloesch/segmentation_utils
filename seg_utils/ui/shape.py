@@ -41,17 +41,17 @@ class Shape(QGraphicsItem):
 
     def initShape(self):
         if self.shape_type in ['trace', 'rectangle']:
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
             if self.shape_type == 'rectangle' and len(self.points) == 2:
                 # this means it is a rectangle consisting only of upper left and lower right hand corner
                 self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
                 self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
             self.updatePath()
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
             self._bounding_rect = self.path.boundingRect()
 
         elif self.shape_type == "circle":
-            # also has a bounding rectangle which is used to draw it
-            four = 4
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
+            self._bounding_rect = QRectF(self.points[0], self.points[1])
 
     def updatePath(self):
         self.path = QPainterPath()
@@ -103,11 +103,8 @@ class Shape(QGraphicsItem):
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
-                # also has a bounding rectangle which is used to draw it
-                four = 4
-
-            elif self.shape_type == "rectangle":
-                four = 4
+                painter.drawEllipse(QRectF(self.points[0], self.points[1]))
+                # maybe paint the vertices? But the bounding rect should only be visible on select
 
     def contains(self, point: QPointF) -> bool:
         r"""Reimplementation as the initial method for a QGraphicsItem uses the shape,
@@ -116,9 +113,24 @@ class Shape(QGraphicsItem):
         if self.shape_type in ['trace', 'rectangle']:
             return self.path.contains(point)
 
-        elif self.shape_type in ['ellipse']:
-            pass
-            # TODO: implementation based on radius or something
+        elif self.shape_type in ['circle']:
+            # elliptic formula is (x²/a² + y²/b² = 1) so if the point fulfills the equation respectively
+            # is smaller than 1, the points is inside
+
+            a = (self.points[0].x() - self.points[1].x())/2.0
+            b = (self.points[0].y() - self.points[1].y())/2.0
+            diagonal_vector = (self.points[1] - self.points[0])/2.0
+            centerpoint = self.points[0] + diagonal_vector
+            # TODO: maybe i dont need the abs here as i restrict it to the boundaries of the image
+            centerpoint = QPointF(abs(centerpoint.x()), abs(centerpoint.y()))
+            value = (point.x()-centerpoint.x()) ** 2 / a ** 2 + (point.y() - centerpoint.y()) ** 2 / b ** 2
+
+            print(value)
+
+            if value <= 1:
+                return True
+            else:
+                return False
 
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
@@ -170,7 +182,6 @@ class VertexCollection(object):
         """Check if a point is within the closest vertex rectangle"""
         closestVertex = self.closestVertex(np.asarray([point.x(), point.y()]))
         vertexCenter = self.vertices[closestVertex]
-        #size = (self.vertex_size+self._highlight_size) / 2
         size = self.vertex_size / 2
         vertexRect = QRectF(vertexCenter - QPointF(size, size),
                             vertexCenter + QPointF(size, size))
