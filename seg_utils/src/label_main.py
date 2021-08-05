@@ -4,6 +4,8 @@ from PyQt5.QtCore import pyqtSignal, QPointF, QRectF, Qt
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QDialog, QLabel
 from PyQt5.QtGui import QPixmap, QIcon
 
+from typing import Tuple, List, Union
+
 from seg_utils.utils.database import SQLiteDatabase
 from seg_utils.utils import qt
 from seg_utils.ui.toolbar import Toolbar
@@ -29,7 +31,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.database = None
         self.basedir = None
         self.labeled_images = []
-        self.current_label = []
+        self.current_labels = []
         self.classes = {}
         self.isLabeled = None
         self.img_idx = 0
@@ -135,7 +137,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.initColors()
         self.initClasses()
         self.initFileList()
-        self.updateImage()
+        self.initImage()
         self.enableButtons(True)
 
     def initClasses(self):
@@ -163,11 +165,28 @@ class LabelMain(QMainWindow, LabelUI):
             self.fileList.addItem(item)
         self.fileList.setCurrentRow(self.img_idx)
 
+    def initLabels(self):
+        r"""This function initializes the labels for the current image. Necessary to have only one call to the database
+        if the image is changed"""
+        labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
+        self.current_labels = [Shape.from_dict
+                              (Shape(), _label, color=self.getColorForLabel(_label['label']))
+                              for _label in labels]
+        self.polyList.updateList(self.current_labels)
+
+    def initImage(self):
+        """Initializes the displayed image and respective label/canvas"""
+        self.initLabels()
+        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx]))
+        self.imageDisplay.canvas.setPixmap(image)
+        self.imageDisplay.canvas.setLabels(self.current_labels)
+        self.fileList.setCurrentRow(self.img_idx)
+
     def handleFileListItemClicked(self):
         """Tracks the changed item in the label List"""
         selected_file = self.fileList.currentItem().text()
         self.img_idx = self.labeled_images.index(IMAGES_DIR + selected_file)
-        self.updateImage()
+        self.initImage()
 
     def handleFileListSearch(self):
         r"""Handles the file search. If the user types into the text box, it changes the files which are displayed"""
@@ -193,21 +212,15 @@ class LabelMain(QMainWindow, LabelUI):
         label_index = self.classes[label_name]
         return self.colorMap[label_index]
 
-    def updateImage(self):
-        """Updates the displayed image and respective label/canvas"""
-        self.updateLabel()
-        image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx]))
-        self.imageDisplay.canvas.setPixmap(image)
-        self.imageDisplay.canvas.setLabels(self.current_label)
-        self.fileList.setCurrentRow(self.img_idx)
-
-    def updateLabel(self):
+    def updateLabels(self, shapes: Union[Shape, List[Shape]]):
         """Updates the current displayed label/canvas"""
-        labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
-        self.current_label = [Shape.from_dict
-                              (Shape(), _label, color=self.getColorForLabel(_label['label']))
-                              for _label in labels]
-        self.polyList.updateList(self.current_label)
+        if isinstance(shapes, list):
+            for _shape in shapes:
+                self.current_labels.append(_shape)
+        else:
+            self.current_labels.append(shapes)
+        self.imageDisplay.canvas.setLabels(self.current_labels)
+        self.polyList.updateList(self.current_labels)
 
     def enableButtons(self, value: bool):
         """This function enables/disabled all the buttons as soon as there is a valid database selected.
@@ -219,6 +232,11 @@ class LabelMain(QMainWindow, LabelUI):
         # TODO: this disables the Open Database Button as i only need it once
         #   and currently it crashes everything if clicked again
         self.toolBar.getWidgetForAction('OpenDatabase').setEnabled(False)
+
+    def setButtonsUnChecked(self):
+        for act in self.toolBar.actions():
+            if self.toolBar.widgetForAction(act).isChecked():
+                self.toolBar.widgetForAction(act).setChecked(Qt.Unchecked)
 
     def on_openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
@@ -235,17 +253,31 @@ class LabelMain(QMainWindow, LabelUI):
 
     def on_saveLabel(self):
         """Save current state to database"""
-        four = 4
+        label_list = []
+        classes_set = set()
+        for _lbl in self.current_labels:
+            label_dict, class_name = self.ShapeToDict(_lbl)
+            label_list.append(label_dict)
+            classes_set.add(class_name)
+        classes_dict = {_key: 0 for _key in self.classes.keys()}  # initialize the final dict
+        for _class in classes_set:
+            if _class in classes_dict.keys():
+                classes_dict[_class] = 1
+        classes_dict['label_list'] = label_list
+        self.database.update_label(image_name=self.labeled_images[self.img_idx], label_class_dict=classes_dict)
 
     def on_nextImage(self):
         """Display the next image"""
+        # TODO: dialog which makes the user select to save the image if there are changes
         self.img_idx = (self.img_idx + 1) % len(self.labeled_images)
-        self.updateImage()
+        self.initImage()
+        self.setButtonsUnChecked()
 
     def on_prevImag(self):
         """Display the previous image"""
         self.img_idx = (self.img_idx - 1) % len(self.labeled_images)
-        self.updateImage()
+        self.initImage()
+        self.setButtonsUnChecked()
 
     def on_drawPolygon(self):
         """Draw own Polygon"""
@@ -261,19 +293,48 @@ class LabelMain(QMainWindow, LabelUI):
             # Case for enabled drawing
             self.imageDisplay.scene.mode = self.CREATE
             if not upper_left.isNull() and not upper_left.isNull():
-                rect = QRectF(upper_left, lower_right)
+                self.imageDisplay.canvas.setTempLabel([upper_left, lower_right], shape_type='rectangle')
         else:
             self.imageDisplay.scene.mode = self.EDIT
 
-    def on_drawEnd(self, upper_left: QPointF(), lower_right: QPointF):
-        print("Drawing Ended")
+    def on_drawEnd(self, points: List[QPointF]):
         d = NewShapeDialog(self)
         d.exec()
 
         if d.class_name:
-            shape = Shape(label=d.class_name, points=[upper_left, lower_right],
+            shape = Shape(label=d.class_name, points=points,
                           color=self.getColorForLabel(d.class_name), shape_type="rectangle")
+            self.updateLabels(shape)
+        self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
 
     def on_traceOutline(self):
         """Trace the outline of a shape"""
         four = 4
+
+    def checkForChanges(self) -> bool:
+        r"""Check for changes with the database
+
+            :returns: Returns True if there are changes between labels of the database and the current labels, else
+            False
+        """
+        sql_labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
+        sql_labels = [Shape.from_dict
+                      (Shape(), _label, color=self.getColorForLabel(_label['label']))
+                      for _label in sql_labels]
+
+        if sql_labels == self.current_labels:
+            return False
+        else:
+            return True
+
+    @staticmethod
+    def ShapeToDict(shape: Shape) -> Tuple[dict, str]:
+        r"""Returns a dict and a string from a shape item as those can be easier serialized
+        with pickle compared to own classes"""
+        # TODO: maybe json serialization? Or look into how one can pickle own classes and depickle them
+        dict = {'label': shape.label,
+                'points': [[_pt.x(), _pt.y()] for _pt in shape.points],
+                'shape_type': shape.shape_type,
+                'flags': shape.flags,
+                'group_id': shape.group_id}
+        return dict, shape.label

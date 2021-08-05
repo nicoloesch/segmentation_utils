@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QPointF
 from seg_utils.ui.shape import Shape
 from seg_utils.utils.qt import closestEuclideanDistance
 
-from typing import Tuple
+from typing import Tuple, List
 from numpy import argmax
 
 
@@ -13,7 +13,7 @@ class ImageViewerScene(QGraphicsScene):
     sig_ShapeSelected = pyqtSignal(int, int, int)
     sig_VertexHovered = pyqtSignal()  # TODO: MAYBE implement the highlighting of the vertices
     sig_RectangleDrawing = pyqtSignal(QPointF, QPointF)
-    sig_RectangleDone = pyqtSignal(QPointF, QPointF)
+    sig_RectangleDone = pyqtSignal(list)
 
     CREATE, EDIT = 0, 1
 
@@ -50,7 +50,14 @@ class ImageViewerScene(QGraphicsScene):
     def mouseReleaseEvent(self, event) -> None:
         if self.b_isInitialized:
             if self.drawing():
-                self.sig_RectangleDone.emit(self.starting_point, event.scenePos())
+                # TODO: currently only rectangle drawing
+                mousePos = event.scenePos()
+                # create the rectangle with all four bounding points
+                points = [QPointF(self.starting_point.x(), self.starting_point.y()),
+                          QPointF(self.starting_point.x(), mousePos.y()),
+                          QPointF(mousePos.x(), mousePos.y()),
+                          QPointF(mousePos.x(), self.starting_point.y()),]
+                self.sig_RectangleDone.emit(points)
                 self.starting_point = QPointF()
 
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:

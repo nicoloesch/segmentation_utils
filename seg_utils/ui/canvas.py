@@ -1,6 +1,6 @@
-from PyQt5 import QtCore
-from PyQt5 import QtGui
-from PyQt5 import QtWidgets
+from PyQt5.QtCore import QRectF, pyqtSignal, pyqtSlot, QPointF
+from PyQt5.QtGui import QPixmap, QPainter, QColor
+from PyQt5.QtWidgets import QWidget
 
 
 from typing import List
@@ -8,12 +8,12 @@ from typing import List
 from seg_utils.ui.shape import Shape
 
 
-class Canvas(QtWidgets.QWidget):
+class Canvas(QWidget):
     r"""Base drawing widget as it should be instantiated and then connected to a scene
      https://forum.qt.io/topic/93327/how-can-i-use-qpainter-to-paint-on-qgraphicsview/3
      """
-    sig_RequestFitInView = QtCore.pyqtSignal(QtCore.QRectF)
-    sig_RequestLabelListUpdate = QtCore.pyqtSignal(int)
+    sig_RequestFitInView = pyqtSignal(QRectF)
+    sig_RequestLabelListUpdate = pyqtSignal(int)
 
     CREATE, EDIT = 0, 1
 
@@ -21,26 +21,38 @@ class Canvas(QtWidgets.QWidget):
         super(Canvas, self).__init__(*args, **kwargs)
         self.drawNewColor = None
         self.labels = [Shape]
-        self.pixmap = QtGui.QPixmap()
+        self.temp_label = None
+        self.pixmap = QPixmap()
         self.mode = self.EDIT
+        self._painter = QPainter()
 
-    def setPixmap(self, pixmap: QtGui.QPixmap):
+    def setPixmap(self, pixmap: QPixmap):
         r"""Sets the pixmap and resizes the Widget to the size of the pixmaps as this is just connected
         to the Scene and the image_viewer will display the scene respectively a view into the scene"""
         self.pixmap = pixmap
         self.resize(self.pixmap.size())
-        self.sig_RequestFitInView.emit(QtCore.QRectF(self.pixmap.rect()))
+        self.sig_RequestFitInView.emit(QRectF(self.pixmap.rect()))
 
     def setLabels(self, labels: List[Shape]):
         """Set the labels which are drawn on the canvas"""
         self.labels = labels
         self.update()
 
-    def setNewColor(self, color: QtGui.QColor):
+    def setNewColor(self, color: QColor):
         """Sets the color for drawing a new item"""
         self.drawNewColor = color
 
-    @QtCore.pyqtSlot(int)
+    def setTempLabel(self, points: List[QPointF] = None, shape_type: str = None):
+        if points and shape_type:
+            self.temp_label = Shape(points=points,
+                                    shape_type=shape_type,
+                                    color=self.drawNewColor)
+        else:
+            self.temp_label = None
+
+        self.update()
+
+    @pyqtSlot(int)
     def handleShapeHovered(self, _item_idx: int):
         self.resetHighlight()
         if _item_idx > -1:
@@ -75,14 +87,17 @@ class Canvas(QtWidgets.QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
-        p = QtGui.QPainter(self)
-        p.setRenderHint(QtGui.QPainter.Antialiasing)
-        p.setRenderHint(QtGui.QPainter.HighQualityAntialiasing)
-        p.setRenderHint(QtGui.QPainter.SmoothPixmapTransform)
-        p.drawPixmap(0, 0, self.pixmap)
+        self._painter.begin(self)
+        self._painter.setRenderHint(QPainter.Antialiasing)
+        self._painter.setRenderHint(QPainter.HighQualityAntialiasing)
+        self._painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        self._painter.drawPixmap(0, 0, self.pixmap)
         if self.labels:
             for _label in self.labels:
-                _label.paint(p)
+                _label.paint(self._painter)
 
-        p.end()
+        if self.temp_label:
+            self.temp_label.paint(self._painter)
+
+        self._painter.end()
 

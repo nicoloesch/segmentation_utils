@@ -12,7 +12,7 @@ from seg_utils.utils.qt import closestEuclideanDistance
 class Shape(QGraphicsItem):
     def __init__(self,
                  label: str = None,
-                 points: Union[List[List[float]], List[QPointF]] = [],
+                 points: List[QPointF] = [],
                  color: QColor = None,
                  shape_type: str = None,
                  flags=None,
@@ -40,17 +40,17 @@ class Shape(QGraphicsItem):
         return f"Shape [{self.label.capitalize()}, {self.shape_type.capitalize()}]"
 
     def initShape(self):
-        if self.shape_type == 'trace':
+        if self.shape_type in ['trace', 'rectangle']:
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
+            if self.shape_type == 'rectangle' and len(self.points) == 2:
+                # this means it is a rectangle consisting only of upper left and lower right hand corner
+                self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
+                self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
             self.updatePath()
             self._bounding_rect = self.path.boundingRect()
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
 
         elif self.shape_type == "circle":
             # also has a bounding rectangle which is used to draw it
-            four = 4
-
-        elif self.shape_type == "rectangle":
-            # TODO: should be the same as the trace as a rect is also determined by the 4 edgepoints
             four = 4
 
     def updatePath(self):
@@ -99,7 +99,7 @@ class Shape(QGraphicsItem):
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
-            if self.shape_type == 'trace':
+            if self.shape_type in ['trace', 'rectangle']:
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
