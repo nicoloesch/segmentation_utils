@@ -33,6 +33,7 @@ class Shape(QGraphicsItem):
 
         # distinction between highlighted (hovering over it) and selecting it (click)
         self.b_isHighlighted = False
+        self.b_isClosedPath = False
         self.b_isSelected = False
         self.initShape()
 
@@ -46,17 +47,13 @@ class Shape(QGraphicsItem):
             return False
 
     def initShape(self):
-        if self.shape_type == 'rectangle':
-            if len(self.points) == 2:
+        if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', None]:
+            raise AttributeError("Unsupported Shape")
+        if self.shape_type in ['polygon', 'rectangle', 'lines']:
+            if self.shape_type == 'rectangle' and len(self.points) == 2:
                 # this means it is a rectangle consisting only of upper left and lower right hand corner
                 self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
                 self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
-            self.updatePath()
-            self.closePath()
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
-            self._bounding_rect = self.path.boundingRect()
-
-        elif self.shape_type in ['trace', 'polygon']:
             self.updatePath()
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = self.path.boundingRect()
@@ -70,9 +67,10 @@ class Shape(QGraphicsItem):
         self.path.moveTo(self.points[0])
         for _pnt in self.points[1:]:
             self.path.lineTo(_pnt)
+        if not self.shape_type == 'lines':
+            # This is for drawing the initial traces and polygons such that they do not end and close immediately
 
-    def closePath(self):
-        self.path.closeSubpath()
+            self.path.closeSubpath()
 
     def boundingRect(self) -> QRectF:
         return self._bounding_rect
@@ -113,7 +111,7 @@ class Shape(QGraphicsItem):
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
-            if self.shape_type in ['trace', 'polygon', 'rectangle']:
+            if self.shape_type in ['polygon', 'rectangle', 'lines']:
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":

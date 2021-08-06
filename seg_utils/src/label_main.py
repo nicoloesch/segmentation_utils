@@ -132,7 +132,6 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
 
-
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
         self.basedir = pathlib.Path(database).parents[0]
@@ -316,6 +315,8 @@ class LabelMain(QMainWindow, LabelUI):
         action = f'Draw{shape_type.capitalize()}'
         if self.toolBar.getWidgetForAction(action).isChecked():
             if points:
+                if shape_type == 'polygon':
+                    shape_type = 'lines'
                 self.imageDisplay.canvas.setTempLabel(points, shape_type)
 
     def on_drawEnd(self, points: List[QPointF], shape_type: str):
@@ -325,8 +326,6 @@ class LabelMain(QMainWindow, LabelUI):
             shape = Shape(label=d.class_name, points=points,
                           color=self.getColorForLabel(d.class_name),
                           shape_type=shape_type)
-            if shape_type in ['polygon']:
-                shape.closePath()
             self.updateLabels(shape)
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
 
@@ -350,8 +349,6 @@ class LabelMain(QMainWindow, LabelUI):
             d = ForgotToSaveMessageBox(self)
             d.exec()
             return d.result()
-
-
 
     @staticmethod
     def ShapeToDict(shape: Shape) -> Tuple[dict, str]:
