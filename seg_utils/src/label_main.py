@@ -14,6 +14,8 @@ from seg_utils.ui.label_ui import LabelUI
 from seg_utils.ui.shape import Shape
 from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox
 
+from seg_utils.config import VERTEX_SIZE
+
 import pathlib
 
 IMAGES_DIR = "images/"
@@ -48,6 +50,8 @@ class LabelMain(QMainWindow, LabelUI):
         self.initActions()
         self.connectEvents()
 
+        self.vertex_size = VERTEX_SIZE
+
     def initActions(self):
         """Initialise all actions present which can be connected to buttons or menu items"""
         # TODO: some shortcuts dont work
@@ -78,7 +82,7 @@ class LabelMain(QMainWindow, LabelUI):
                                  "Go to previous image")
         actionDrawPoly = Action(self,
                                 "Draw\nPolygon",
-                                self.on_drawPolygon,
+                                lambda: self.on_drawStart('polygon'),
                                 icon="polygon",
                                 tip="Draw Polygon (right click to show options)",
                                 checkable=True)
@@ -127,6 +131,7 @@ class LabelMain(QMainWindow, LabelUI):
         # Drawing Events
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
+
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -296,10 +301,6 @@ class LabelMain(QMainWindow, LabelUI):
             self.initImage()
             self.setButtonsUnchecked()
 
-    def on_drawPolygon(self):
-        """Draw own Polygon"""
-        four = 4
-
     def on_drawStart(self, shape_type: str):
         r"""Function to enable the drawing but also uncheck all other buttons"""
         action = self.toolBar.getWidgetForAction(f'Draw{shape_type.capitalize()}')
@@ -314,18 +315,18 @@ class LabelMain(QMainWindow, LabelUI):
         r"""Function to handle the drawing event"""
         action = f'Draw{shape_type.capitalize()}'
         if self.toolBar.getWidgetForAction(action).isChecked():
-            self.imageDisplay.scene.setMode(self.CREATE)
-            self.imageDisplay.scene.setShapeType(shape_type)
             if points:
                 self.imageDisplay.canvas.setTempLabel(points, shape_type)
 
     def on_drawEnd(self, points: List[QPointF], shape_type: str):
         d = NewShapeDialog(self)
         d.exec()
-
         if d.class_name:
             shape = Shape(label=d.class_name, points=points,
-                          color=self.getColorForLabel(d.class_name), shape_type=shape_type)
+                          color=self.getColorForLabel(d.class_name),
+                          shape_type=shape_type)
+            if shape_type in ['polygon']:
+                shape.closePath()
             self.updateLabels(shape)
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
 

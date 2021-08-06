@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QRectF, pyqtSignal, pyqtSlot, QPointF
 from PyQt5.QtGui import QPixmap, QPainter, QColor
 from PyQt5.QtWidgets import QWidget
-
+from seg_utils.config import VERTEX_SIZE
 
 from typing import List
 
@@ -19,6 +19,7 @@ class Canvas(QWidget):
 
     def __init__(self, *args, **kwargs):
         super(Canvas, self).__init__(*args, **kwargs)
+        self.vertex_size = VERTEX_SIZE
         self.drawNewColor = None
         self.labels = [Shape]
         self.temp_label = None
@@ -95,7 +96,6 @@ class Canvas(QWidget):
         if self.labels:
             for _label in self.labels:
                 _label.paint(self._painter)
-
         if self.temp_label:
             self.temp_label.paint(self._painter)
 

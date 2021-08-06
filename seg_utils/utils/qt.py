@@ -112,3 +112,14 @@ def getIcon(icon):
 
 def QSizeToList(size: QSize):
     return [size.width(), size.height()]
+
+
+def isInCircle(point: QPointF, centerPointCircle: QPointF, r=2):
+    """Function to check if a point is within a circle with radius r around the centerPoint"""
+    circle = (point.x()-centerPointEllipse.x()) ** 2 / a ** 2 + (point.y() - centerPointEllipse.y()) ** 2 / b ** 2
+
+    if circle < r ** 2:
+        return True
+    else:
+        return False
+

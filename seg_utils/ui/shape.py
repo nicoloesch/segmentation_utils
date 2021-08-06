@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import QGraphicsItem
 from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
-from PyQt5.QtCore import QPointF, Qt, QRectF, QRect
+from PyQt5.QtCore import QPointF, Qt, QRectF, QRect, pyqtSignal
 
 from copy import deepcopy
 from typing import Tuple, Union, List
 import numpy as np
+from seg_utils.config import VERTEX_SIZE
 
 from seg_utils.utils.qt import closestEuclideanDistance
 
@@ -16,11 +17,11 @@ class Shape(QGraphicsItem):
                  color: QColor = None,
                  shape_type: str = None,
                  flags=None,
-                 group_id=None,):
+                 group_id=None):
         super(Shape, self).__init__()
         self.label = label
         self.shape_type = shape_type
-
+        self.vertex_size = VERTEX_SIZE
         self.points = points
         self.flags = flags
         self.group_id = group_id
@@ -33,7 +34,6 @@ class Shape(QGraphicsItem):
         # distinction between highlighted (hovering over it) and selecting it (click)
         self.b_isHighlighted = False
         self.b_isSelected = False
-
         self.initShape()
 
     def __repr__(self):
@@ -46,17 +46,23 @@ class Shape(QGraphicsItem):
             return False
 
     def initShape(self):
-        if self.shape_type in ['trace', 'rectangle']:
-            if self.shape_type == 'rectangle' and len(self.points) == 2:
+        if self.shape_type == 'rectangle':
+            if len(self.points) == 2:
                 # this means it is a rectangle consisting only of upper left and lower right hand corner
                 self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
                 self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
             self.updatePath()
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
+            self.closePath()
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
+            self._bounding_rect = self.path.boundingRect()
+
+        elif self.shape_type in ['trace', 'polygon']:
+            self.updatePath()
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = self.path.boundingRect()
 
         elif self.shape_type == "circle":
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color)
+            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = QRectF(self.points[0], self.points[1])
 
     def updatePath(self):
@@ -64,6 +70,8 @@ class Shape(QGraphicsItem):
         self.path.moveTo(self.points[0])
         for _pnt in self.points[1:]:
             self.path.lineTo(_pnt)
+
+    def closePath(self):
         self.path.closeSubpath()
 
     def boundingRect(self) -> QRectF:
@@ -105,7 +113,7 @@ class Shape(QGraphicsItem):
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
-            if self.shape_type in ['trace', 'rectangle']:
+            if self.shape_type in ['trace', 'polygon', 'rectangle']:
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
@@ -116,7 +124,7 @@ class Shape(QGraphicsItem):
         r"""Reimplementation as the initial method for a QGraphicsItem uses the shape,
         which results in the bounding rectangle"""
 
-        if self.shape_type in ['trace', 'rectangle']:
+        if self.shape_type in ['trace', 'rectangle', 'polygon']:
             return self.path.contains(point)
 
         elif self.shape_type in ['circle']:
@@ -130,9 +138,6 @@ class Shape(QGraphicsItem):
             # TODO: maybe i dont need the abs here as i restrict it to the boundaries of the image
             centerpoint = QPointF(abs(centerpoint.x()), abs(centerpoint.y()))
             value = (point.x()-centerpoint.x()) ** 2 / a ** 2 + (point.y() - centerpoint.y()) ** 2 / b ** 2
-
-            print(value)
-
             if value <= 1:
                 return True
             else:
@@ -153,12 +158,12 @@ class Shape(QGraphicsItem):
 
 
 class VertexCollection(object):
-    def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor):
+    def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
         self.vertices = points
         self.line_color = line_color
         self.brush_color = brush_color
         self.highlight_color = Qt.GlobalColor.white
-        self.vertex_size = 2
+        self.vertex_size = vertex_size
         self._highlight_size = 0.1
         self.b_isHighlighted = False
         self.selectedVertex = -1
