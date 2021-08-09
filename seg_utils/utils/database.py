@@ -252,20 +252,26 @@ class SQLiteDatabase:
             print(error)
             return []
 
-    def get_labels(self, label_classes: List[str]) -> List[str]:
-        r"""Returns all images, which contain a certain class of labels"""
+    def get_labels(self, label_classes: List[str]) -> List[Tuple[str, List[dict]]]:
+        r"""Returns a List of all the labels, that contain a certain class. The return is a List of Lists, where the
+        second list is composed of the image path and the label_list dict
+
+            :param label_classes: List of classes, e.g. [tumour, cauterized]
+            :returns: List[List[image_path, label_list]]
+
+        """
         try:
             with self.connection:
                 classes = self.get_label_classes()
                 if all(_class in classes for _class in label_classes):
-                    sql_string = "SELECT * FROM labels WHERE "
+                    sql_string = "SELECT image_path, label_list FROM labels WHERE "
                     for idx in range(len(label_classes)):
                         if idx > 0:
                             sql_string += " OR "
                         sql_string += f"class_{label_classes[idx]} > 0"
                     sql_string += ";"
-                    ret = self.connection.execute(sql_string).fetchall()
-                    return [entry[1] for entry in ret]
+                    sql_call = self.connection.execute(sql_string).fetchall()
+                    return check_for_bytes(sql_call)
                 else:
                     print(f"all labels in label_class must be one of\n{classes}")
         except sqlite3.DatabaseError as error:
@@ -523,8 +529,10 @@ def check_for_bytes(lst: List[tuple]) -> Union[List[list], list]:
                     lst[_list_idx][_tuple_idx] = pickle.loads(_value)
                 else:
                     continue
+    """
     if len(lst) == 1:
         lst = lst[0]
+    """
     return lst
 
 

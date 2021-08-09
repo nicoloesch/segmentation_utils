@@ -5,6 +5,8 @@ from seg_utils.src.label_main import LabelMain
 from seg_utils.src.selection_main import SelectionMain
 from seg_utils.src.viewer_main import ViewerMain
 import argparse
+from seg_utils.utils.masks import create_binary_maks
+from seg_utils.utils.database import SQLiteDatabase
 
 
 import numpy as np
@@ -15,9 +17,9 @@ from PyQt5.QtCore import QPointF
 def main(args):
 
     app = QApplication(sys.argv)
-    #window = SegSelectionMain()  # this opens the selection window
+    #window = SelectionMain()  # this opens the selection window
     window = LabelMain()
-    #window = SegViewerMain()
+    #window = ViewerMain()
     window.show()
     sys.exit(app.exec_())
 
@@ -29,13 +31,10 @@ def closest_node(node, nodes):
 
 def test():
     r"""Function for testing stuff"""
-    vertices = np.array([[0, 0],
-                         [1, 0],
-                         [1, 1],
-                         [0, 1]])
-    testPoint = np.array([1.0, 0])
-
-    a = closest_node(testPoint, vertices)
+    database_path = "/home/nico/isys/data/test.db"
+    database = SQLiteDatabase(database_path)
+    labels = database.get_labels(["tumour", "cauterized"])
+    bm = create_binary_maks("/home/nico/isys/data/", labels)
     four = 4
 
 
@@ -44,4 +43,4 @@ if __name__ == "__main__":
     # Add arguments to argument parser
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    main(args)
+    #main(args)
