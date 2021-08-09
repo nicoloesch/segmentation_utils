@@ -25,7 +25,8 @@ class Shape(QGraphicsItem):
         self.points = points
         self.flags = flags
         self.group_id = group_id
-        self.line_color, self.brush_color = self.initColor(color)
+        self.line_color, self.brush_color = None, None
+        self.initColor(color)
         self.selected_color = Qt.GlobalColor.white
         self.path = None
         self.vertices = None
@@ -92,7 +93,7 @@ class Shape(QGraphicsItem):
         if 'group_id' in label_dict:
             self.group_id = label_dict['group_id']
 
-        self.line_color, self.brush_color = self.initColor(color)
+        self.initColor(color)
         self.initShape()
         return self
 
@@ -144,15 +145,16 @@ class Shape(QGraphicsItem):
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
         return [QPointF(*_pt) for _pt in point_list]
 
-    @staticmethod
-    def initColor(color: QColor):
+    def initColor(self, color: QColor):
         if color:
-            line_color, brush_color = color, deepcopy(color)
-            brush_color.setAlphaF(0.5)
-            return line_color, brush_color
-        else:
-            return None, None
+            self.line_color, self.brush_color = color, deepcopy(color)
+            self.brush_color.setAlphaF(0.5)
 
+    def updateColor(self, color: QColor):
+        if color:
+            self.line_color, self.brush_color = color, deepcopy(color)
+            self.brush_color.setAlphaF(0.5)
+            self.vertices.updateColor(self.line_color, self.brush_color)
 
 class VertexCollection(object):
     def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
@@ -199,6 +201,12 @@ class VertexCollection(object):
         else:
             return False, -1
 
+    def updateColor(self, line_color: QColor, brush_color: QColor):
+        if line_color and brush_color:
+            self.line_color = line_color
+            self.brush_color = brush_color
+
     @staticmethod
     def ListQPointF_to_Numpy(point_list: List[QPointF]):
         return np.asarray([[_pt.x(), _pt.y()] for _pt in point_list])
+

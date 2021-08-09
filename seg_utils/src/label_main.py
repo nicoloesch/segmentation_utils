@@ -1,7 +1,7 @@
 import sys
 
 from PyQt5.QtCore import pyqtSignal, QPointF, QRectF, Qt
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QMessageBox, QMenu
 from PyQt5.QtGui import QPixmap, QIcon
 
 from typing import Tuple, List, Union
@@ -40,6 +40,8 @@ class LabelMain(QMainWindow, LabelUI):
         self.b_autoSave = True
         self.actions = tuple()
         self.actions_dict = {}
+        self.contextMenu = QMenu(self)
+        self._selectedShape = -1
 
         # color stuff
         self._num_colors = 25  # number of colors
@@ -118,6 +120,17 @@ class LabelMain(QMainWindow, LabelUI):
         # Init Toolbar
         self.toolBar.addActions(self.actions)
 
+        actionEditLabel = Action(self, "Edit Label Name",
+                                 self.on_editLabel,
+                                 icon="pen",
+                                 tip="Edit Label Name",enabled=True)
+        actionDeleteLabel = Action(self, "Delete Label",
+                                   self.on_deleteLabel,
+                                   icon="trash",
+                                   tip="Delete Label")
+
+        self.initContextMenu((actionEditLabel, actionDeleteLabel))
+
     def connectEvents(self):
         self.fileList.itemClicked.connect(self.handleFileListItemClicked)
         self.fileSearch.textChanged.connect(self.handleFileListSearch)
@@ -128,9 +141,39 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.scene.sig_ShapeSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
         self.sig_LabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
 
+        # ContextMenu
+        self.imageDisplay.scene.sig_RequestContextMenu.connect(self.on_requestContextMenu)
+
         # Drawing Events
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
+
+    def on_requestContextMenu(self, shape_idx, contextmenu_pos):
+        """This opens the context menu. Most likely can also be called either in
+        image_viewer or graphics_scene by overriding the contextMenuEvent. However, I need the
+        shape_idx and I dont want to have twice the same call to get one number hence i send it with a
+        signal from the graphics scene to here"""
+        self._selectedShape = shape_idx
+        if shape_idx != -1:
+            for action in self.contextMenu.actions():
+                action.setEnabled(True)
+        else:
+            for action in self.contextMenu.actions():
+                action.setEnabled(False)
+        self.contextMenu.exec(contextmenu_pos)
+
+    def on_editLabel(self):
+        d = NewShapeDialog(self)
+        d.exec()
+        if d.class_name:
+            # traces are also polygons so i am going to store them as such
+            shape = self.current_labels[self._selectedShape]
+            shape.label = d.class_name
+            shape.updateColor(self.getColorForLabel(shape.label))
+            self.updateLabels((self._selectedShape, shape))
+
+    def on_deleteLabel(self):
+        four = 4
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -142,7 +185,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.initClasses()
         self.initFileList()
         self.initImage()
-        self.enableButtons(True)
+        self.enableButtons()
 
     def initClasses(self):
         """This function initializes the available classes in the database and updates the label list"""
@@ -186,11 +229,19 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.canvas.setLabels(self.current_labels)
         self.fileList.setCurrentRow(self.img_idx)
 
+    def initContextMenu(self, actions: Tuple[Action]):
+        for action in actions:
+            self.contextMenu.addAction(action)
+
     def handleFileListItemClicked(self):
         """Tracks the changed item in the label List"""
-        selected_file = self.fileList.currentItem().text()
-        self.img_idx = self.labeled_images.index(IMAGES_DIR + selected_file)
-        self.initImage()
+        dlgResult = self.checkForChanges()
+        if dlgResult == QMessageBox.AcceptRole or dlgResult == QMessageBox.DestructiveRole:
+            if dlgResult == QMessageBox.AcceptRole:
+                self.on_saveLabel()
+            selected_file = self.fileList.currentItem().text()
+            self.img_idx = self.labeled_images.index(IMAGES_DIR + selected_file)
+            self.initImage()
 
     def handleFileListSearch(self):
         r"""Handles the file search. If the user types into the text box, it changes the files which are displayed"""
@@ -216,22 +267,24 @@ class LabelMain(QMainWindow, LabelUI):
         label_index = self.classes[label_name]
         return self.colorMap[label_index]
 
-    def updateLabels(self, shapes: Union[Shape, List[Shape]]):
+    def updateLabels(self, shapes: Union[Shape, List[Shape], Tuple[int, Shape]]):
         """Updates the current displayed label/canvas"""
         if isinstance(shapes, list):
             for _shape in shapes:
                 self.current_labels.append(_shape)
+        elif isinstance(shapes, tuple):
+            self.current_labels[shapes[0]] = shapes[1]
         else:
             self.current_labels.append(shapes)
         self.imageDisplay.canvas.setLabels(self.current_labels)
         self.polyList.updateList(self.current_labels)
 
-    def enableButtons(self, value: bool):
+    def enableButtons(self):
         """This function enables/disabled all the buttons as soon as there is a valid database selected.
             :param bool value: True enables Buttons, False disables them
         """
         for act in self.toolBar.actions():
-            self.toolBar.widgetForAction(act).setEnabled(value)
+            self.toolBar.widgetForAction(act).setEnabled(True)
 
         # TODO: this disables the Open Database Button as i only need it once
         #   and currently it crashes everything if clicked again
@@ -333,10 +386,6 @@ class LabelMain(QMainWindow, LabelUI):
                           shape_type=shape_type)
             self.updateLabels(shape)
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
-
-    def on_traceOutline(self):
-        """Trace the outline of a shape"""
-        four = 4
 
     def checkForChanges(self) -> int:
         r"""Check for changes with the database

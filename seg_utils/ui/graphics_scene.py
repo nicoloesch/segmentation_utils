@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsSceneMouseEvent
-from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QRectF
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsSceneMouseEvent, QMenu
+from PyQt5.QtCore import Qt, pyqtSignal, QPointF, QRectF, QPoint
 
 from seg_utils.utils.qt import isInCircle
 from seg_utils.config import VERTEX_SIZE
+from seg_utils.src.actions import Action
 
 from typing import Tuple
 from numpy import argmax
@@ -12,6 +13,8 @@ class ImageViewerScene(QGraphicsScene):
     sig_ShapeHovered = pyqtSignal(int)
     sig_ShapeSelected = pyqtSignal(int, int, int)
     sig_VertexHovered = pyqtSignal()  # TODO: MAYBE implement the highlighting of the vertices
+
+    sig_RequestContextMenu = pyqtSignal(int, QPoint)
 
     sig_Drawing = pyqtSignal(list, str)
     sig_DrawingDone = pyqtSignal(list, str)
@@ -26,6 +29,8 @@ class ImageViewerScene(QGraphicsScene):
         self.starting_point = QPointF()
         self._startButtonPressed = False
         self.poly_points = []  # list of points for the polygon drawing
+        self.contextMenu = QMenu()
+        self.b_contextMenuAvail = False
 
     def isInDrawingMode(self) -> bool:
         """Returns true if currently in drawing mode"""
@@ -37,6 +42,16 @@ class ImageViewerScene(QGraphicsScene):
     def setMode(self, mode: int):
         assert mode in [self.CREATE, self.EDIT]
         self.mode = mode
+
+    def initContextMenu(self, actions: Tuple[Action]):
+        for action in actions:
+            self.contextMenu.addAction(action)
+
+    """
+    def contextMenuEvent(self, event) -> None:
+        if self.b_contextMenuAvail:
+            self.contextMenu.exec(event.screenPos())
+    """
 
     def setClosedPath(self):
         self._startButtonPressed = False
@@ -61,6 +76,21 @@ class ImageViewerScene(QGraphicsScene):
                 else:
                     hShape, vShape, vNum = self.isMouseOnShape(event)
                     self.sig_ShapeSelected.emit(hShape, vShape, vNum)
+
+            elif event.button() == Qt.MouseButton.RightButton:
+                if not self.isInDrawingMode():
+                    sel_shape = self.isShapeSelected()
+                    self.sig_RequestContextMenu.emit(sel_shape, event.screenPos())
+                    """
+                    if sel_shape != -1:
+                        self.b_contextMenuAvail = True
+                        for act in self.contextMenu.actions():
+                            act.setEnabled(True)
+                    else:
+                        self.b_contextMenuAvail = False
+                        for act in self.contextMenu.actions():
+                            act.setEnabled(False)
+                    """
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for moving the mouse. Currently only for selecting the shapes
@@ -130,3 +160,11 @@ class ImageViewerScene(QGraphicsScene):
                 return False
         else:
             return False
+
+    def isShapeSelected(self):
+        r"""Check if shape is highlighted which enables the context menu"""
+        selectedShape = -1
+        for _item_idx, _item in enumerate(self.items()[0].widget().labels):
+            if _item.b_isSelected:
+                selectedShape = _item_idx
+        return selectedShape
