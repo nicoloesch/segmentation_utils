@@ -39,8 +39,8 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    #test()
     # Add arguments to argument parser
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    #main(args)
+    main(args)

@@ -12,6 +12,8 @@ def create_binary_maks(base_path: str, label_list: List[Tuple[str, List[dict]]])
     r"""This function creates a binary mask array for each label present in the label_list.
     If the same label category is present, individual masks are created with instance segmentation in mind
     rather than semantic segmentation.
+
+    Intended to be called with database.get_labels()
     """
     binary_mask = []
     # multiple images in the label_list
@@ -21,7 +23,6 @@ def create_binary_maks(base_path: str, label_list: List[Tuple[str, List[dict]]])
         # per image, there might be several labels/shapes
         for _label in _image[1]:
             _bm = []
-            # NOTE: for some reason, cv2 wants to have it as height,width and not as width,height idkkkkk
             _mask = np.zeros(image_size, dtype=np.int32)
             if 'points' in _label:
                 # now distinction between the individual shapes

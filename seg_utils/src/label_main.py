@@ -87,8 +87,8 @@ class LabelMain(QMainWindow, LabelUI):
                                 tip="Draw Polygon (right click to show options)",
                                 checkable=True)
         actionTraceOutline = Action(self,
-                                    "Trace\nOutline",
-                                    self.on_traceOutline,
+                                    "Draw\nTrace",
+                                    lambda: self.on_drawStart('trace'),
                                     icon="outline",
                                     tip="Trace Outline",
                                     checkable=True)
@@ -315,6 +315,8 @@ class LabelMain(QMainWindow, LabelUI):
         action = f'Draw{shape_type.capitalize()}'
         if self.toolBar.getWidgetForAction(action).isChecked():
             if points:
+                # change intermediate stuff to lines so i can keep it seperate from a polygon which has
+                # a closed path
                 if shape_type == 'polygon':
                     shape_type = 'lines'
                 self.imageDisplay.canvas.setTempLabel(points, shape_type)
@@ -323,6 +325,9 @@ class LabelMain(QMainWindow, LabelUI):
         d = NewShapeDialog(self)
         d.exec()
         if d.class_name:
+            # traces are also polygons so i am going to store them as such
+            if shape_type == 'trace':
+                shape_type = 'polygon'
             shape = Shape(label=d.class_name, points=points,
                           color=self.getColorForLabel(d.class_name),
                           shape_type=shape_type)

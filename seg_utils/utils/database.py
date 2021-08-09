@@ -529,10 +529,10 @@ def check_for_bytes(lst: List[tuple]) -> Union[List[list], list]:
                     lst[_list_idx][_tuple_idx] = pickle.loads(_value)
                 else:
                     continue
-    """
+
     if len(lst) == 1:
         lst = lst[0]
-    """
+
     return lst
 
 

@@ -72,8 +72,11 @@ class ImageViewerScene(QGraphicsScene):
                     self.sig_Drawing.emit(intermediate_points, self.shape_type)
                 else:
                     if self._startButtonPressed:
-                        # only necessary do display while drawing for those two shapes
-                        self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
+                        if self.shape_type in ['trace']:
+                            self.poly_points.append(event.scenePos())
+                            self.sig_Drawing.emit(self.poly_points, self.shape_type)
+                        elif self.shape_type in ['circle', 'rectangle']:
+                            self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
             else:
                 hShape, vShape, vNum = self.isMouseOnShape(event)
                 self.sig_ShapeHovered.emit(hShape)
@@ -87,6 +90,8 @@ class ImageViewerScene(QGraphicsScene):
                         self._startButtonPressed = False
                         self.sig_DrawingDone.emit([self.starting_point, event.scenePos()], self.shape_type)
                         self.starting_point = QPointF()
+                    elif self.shape_type in ['trace']:
+                        self.setClosedPath()
 
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
         r"""Check if event position is within the boundaries of a shape

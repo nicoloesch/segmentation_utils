@@ -47,9 +47,9 @@ class Shape(QGraphicsItem):
             return False
 
     def initShape(self):
-        if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', None]:
+        if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', 'trace', None]:
             raise AttributeError("Unsupported Shape")
-        if self.shape_type in ['polygon', 'rectangle', 'lines']:
+        if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
             if self.shape_type == 'rectangle' and len(self.points) == 2:
                 # this means it is a rectangle consisting only of upper left and lower right hand corner
                 self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
@@ -67,9 +67,8 @@ class Shape(QGraphicsItem):
         self.path.moveTo(self.points[0])
         for _pnt in self.points[1:]:
             self.path.lineTo(_pnt)
-        if not self.shape_type == 'lines':
+        if self.shape_type not in ['lines', 'trace']:
             # This is for drawing the initial traces and polygons such that they do not end and close immediately
-
             self.path.closeSubpath()
 
     def boundingRect(self) -> QRectF:
@@ -111,7 +110,7 @@ class Shape(QGraphicsItem):
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
-            if self.shape_type in ['polygon', 'rectangle', 'lines']:
+            if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
@@ -122,7 +121,7 @@ class Shape(QGraphicsItem):
         r"""Reimplementation as the initial method for a QGraphicsItem uses the shape,
         which results in the bounding rectangle"""
 
-        if self.shape_type in ['trace', 'rectangle', 'polygon']:
+        if self.shape_type in ['rectangle', 'polygon']:
             return self.path.contains(point)
 
         elif self.shape_type in ['circle']:
