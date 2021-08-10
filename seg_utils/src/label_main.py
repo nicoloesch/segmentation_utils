@@ -284,6 +284,12 @@ class LabelMain(QMainWindow, LabelUI):
             if not self.toolBar.widgetForAction(act) == action:
                 self.toolBar.widgetForAction(act).setChecked(Qt.Unchecked)
 
+    def closeEvent(self, event) -> None:
+        dlgResult = self.checkForChanges()
+        if dlgResult == QMessageBox.AcceptRole or dlgResult == QMessageBox.DestructiveRole:
+            if dlgResult == QMessageBox.AcceptRole:
+                self.on_saveLabel()
+
     def on_openDatabase(self, fddirectory, fdoptions):
         """This function is the handle for opening a database"""
         database, _ = QFileDialog.getOpenFileName(self,
