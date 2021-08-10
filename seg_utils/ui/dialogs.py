@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QDialog, QPushButton, QWidget, QLabel,
                              QVBoxLayout, QTextEdit, QHBoxLayout, QDialogButtonBox,
                              QStyle, QMessageBox)
 from PyQt5.QtCore import QSize, QPoint
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTextCursor
 
 from seg_utils.ui.list_widget import ListWidget
 from seg_utils.utils.qt import createListWidgetItemWithSquareIcon, getIcon
@@ -17,7 +17,7 @@ class NewShapeDialog(QDialog):
 
         # Create the shape of the QDialog
         self.setFixedSize(QSize(300, 400))
-        self.moveToCenter(parent.pos(), parent.size())
+        moveToCenter(self, parent.pos(), parent.size())
         self.setWindowTitle("Select class of new shape")
 
         layout = QVBoxLayout(self)
@@ -25,13 +25,13 @@ class NewShapeDialog(QDialog):
         layout.setSpacing(5)
 
         # Textedit
-        shapeText = QTextEdit(self)
+        self.shapeText = QTextEdit(self)
         font = QFont()
         font.setPointSize(10)
         font.setKerning(True)
-        shapeText.setFont(font)
-        shapeText.setPlaceholderText("Enter shape label")
-        shapeText.setMaximumHeight(25)
+        self.shapeText.setFont(font)
+        self.shapeText.setPlaceholderText("Enter shape label")
+        self.shapeText.setMaximumHeight(25)
 
         # Buttons
         buttonWidget = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -43,7 +43,7 @@ class NewShapeDialog(QDialog):
         self.listWidget.itemClicked.connect(self.on_ListSelection)
 
         # Combining everything
-        layout.addWidget(shapeText)
+        layout.addWidget(self.shapeText)
         layout.addWidget(buttonWidget)
         layout.addWidget(self.listWidget)
 
@@ -52,21 +52,22 @@ class NewShapeDialog(QDialog):
             item = createListWidgetItemWithSquareIcon(_class, parent.colorMap[idx], 10)
             self.listWidget.addItem(item)
 
-    def moveToCenter(self, parent_pos: QPoint, parent_size: QSize):
-        r"""Moves the QDialog to the center of the parent Widget.
-        As self.move moves the upper left corner to the place, one needs to subtract the own size of the window"""
-        self.move(parent_pos.x() + parent_size.width()/2 - self.size().width()/2,
-                  parent_pos.y() + parent_size.height()/2 - self.size().height()/2)
-
     def on_ListSelection(self, item):
         self.class_name = item.text()
 
     def on_ButtonClicked(self):
         self.close()
 
+    def setText(self, text):
+        self.shapeText.setText(text)
+        # move the cursor to the end
+        newCursor = self.shapeText.textCursor()
+        newCursor.movePosition(self.shapeText.document().characterCount())
+        self.shapeText.setTextCursor(newCursor)
+
 
 class ForgotToSaveMessageBox(QMessageBox):
-    def __init__(self, parent: QWidget, *args):
+    def __init__(self, *args):
         super(ForgotToSaveMessageBox, self).__init__(*args)
 
         saveButton = QPushButton(getIcon('save'), "Save Changes")
@@ -81,10 +82,23 @@ class ForgotToSaveMessageBox(QMessageBox):
         self.addButton(cancelButton, QMessageBox.RejectRole)
         self.addButton(dismissButton, QMessageBox.DestructiveRole)
 
-        self.moveToCenter(parent.pos(), parent.size())
+        moveToCenter(self, self.parentWidget().pos(), self.parentWidget().size())
+        
+        
+class DeleteShapeMessageBox(QMessageBox):
+    def __init__(self, shape: str, *args):
+        super(DeleteShapeMessageBox, self).__init__(*args)
+        moveToCenter(self, self.parentWidget().pos(), self.parentWidget().size())
+        reply = self.question(self, "Deleting Shape", f"You are about to delete {shape}. Continue?",
+                      QMessageBox.Yes|QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            self.answer = 1
+        else:
+            self.answer = 0
 
-    def moveToCenter(self, parent_pos: QPoint, parent_size: QSize):
-        r"""Moves the QDialog to the center of the parent Widget.
-        As self.move moves the upper left corner to the place, one needs to subtract the own size of the window"""
-        self.move(parent_pos.x() + parent_size.width()/2 - self.size().width()/2,
-                  parent_pos.y() + parent_size.height()/2 - self.size().height()/2)
+
+def moveToCenter(widget, parent_pos: QPoint, parent_size: QSize):
+    r"""Moves the QDialog to the center of the parent Widget.
+    As self.move moves the upper left corner to the place, one needs to subtract the own size of the window"""
+    widget.move(parent_pos.x() + (parent_size.width() - widget.size().width())/2,
+                parent_pos.y() + (parent_size.height() - widget.size().height())/2)

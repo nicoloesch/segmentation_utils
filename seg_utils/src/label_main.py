@@ -12,7 +12,7 @@ from seg_utils.ui.toolbar import Toolbar
 from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
 from seg_utils.ui.shape import Shape
-from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox
+from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox, DeleteShapeMessageBox
 
 from seg_utils.config import VERTEX_SIZE
 
@@ -143,37 +143,11 @@ class LabelMain(QMainWindow, LabelUI):
 
         # ContextMenu
         self.imageDisplay.scene.sig_RequestContextMenu.connect(self.on_requestContextMenu)
+        self.polyList.sig_RequestContextMenu.connect(self.on_requestContextMenu)
 
         # Drawing Events
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
-
-    def on_requestContextMenu(self, shape_idx, contextmenu_pos):
-        """This opens the context menu. Most likely can also be called either in
-        image_viewer or graphics_scene by overriding the contextMenuEvent. However, I need the
-        shape_idx and I dont want to have twice the same call to get one number hence i send it with a
-        signal from the graphics scene to here"""
-        self._selectedShape = shape_idx
-        if shape_idx != -1:
-            for action in self.contextMenu.actions():
-                action.setEnabled(True)
-        else:
-            for action in self.contextMenu.actions():
-                action.setEnabled(False)
-        self.contextMenu.exec(contextmenu_pos)
-
-    def on_editLabel(self):
-        d = NewShapeDialog(self)
-        d.exec()
-        if d.class_name:
-            # traces are also polygons so i am going to store them as such
-            shape = self.current_labels[self._selectedShape]
-            shape.label = d.class_name
-            shape.updateColor(self.getColorForLabel(shape.label))
-            self.updateLabels((self._selectedShape, shape))
-
-    def on_deleteLabel(self):
-        four = 4
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -232,6 +206,7 @@ class LabelMain(QMainWindow, LabelUI):
     def initContextMenu(self, actions: Tuple[Action]):
         for action in actions:
             self.contextMenu.addAction(action)
+            self.polyList.contextMenu.addAction(action)
 
     def handleFileListItemClicked(self):
         """Tracks the changed item in the label List"""
@@ -267,14 +242,18 @@ class LabelMain(QMainWindow, LabelUI):
         label_index = self.classes[label_name]
         return self.colorMap[label_index]
 
-    def updateLabels(self, shapes: Union[Shape, List[Shape], Tuple[int, Shape]]):
-        """Updates the current displayed label/canvas"""
+    def updateLabels(self, shapes: Union[Shape, List[Shape], Tuple[int, Shape]] = None):
+        """Updates the current displayed label/canvas in multiple ways. If no argument is given,
+        only the labels are updated in the displaying widgets"""
         if isinstance(shapes, list):
+            # Add multiple shapes
             for _shape in shapes:
                 self.current_labels.append(_shape)
         elif isinstance(shapes, tuple):
+            # replace a shape with a new shape
             self.current_labels[shapes[0]] = shapes[1]
-        else:
+        elif isinstance(shapes, Shape):
+            # add one shape
             self.current_labels.append(shapes)
         self.imageDisplay.canvas.setLabels(self.current_labels)
         self.polyList.updateList(self.current_labels)
@@ -386,6 +365,38 @@ class LabelMain(QMainWindow, LabelUI):
                           shape_type=shape_type)
             self.updateLabels(shape)
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
+
+    def on_requestContextMenu(self, shape_idx, contextmenu_pos):
+        """This opens the context menu. Most likely can also be called either in
+        image_viewer or graphics_scene by overriding the contextMenuEvent. However, I need the
+        shape_idx and I dont want to have twice the same call to get one number hence i send it with a
+        signal from the graphics scene to here"""
+        self._selectedShape = shape_idx
+        if shape_idx != -1 and self.current_labels[shape_idx].b_isSelected:
+            for action in self.contextMenu.actions():
+                action.setEnabled(True)
+        else:
+            for action in self.contextMenu.actions():
+                action.setEnabled(False)
+        self.contextMenu.exec(contextmenu_pos)
+
+    def on_editLabel(self):
+        d = NewShapeDialog(self)
+        d.setText(self.current_labels[self._selectedShape].label)
+        d.exec()
+        if d.class_name:
+            # traces are also polygons so i am going to store them as such
+            shape = self.current_labels[self._selectedShape]
+            shape.label = d.class_name
+            shape.updateColor(self.getColorForLabel(shape.label))
+            self.updateLabels((self._selectedShape, shape))
+
+    def on_deleteLabel(self):
+        dialog = DeleteShapeMessageBox(self.current_labels[self._selectedShape].label, self)
+        if dialog.answer == 1:
+            # Delete the shape
+            self.current_labels.pop(self._selectedShape)
+            self.updateLabels()
 
     def checkForChanges(self) -> int:
         r"""Check for changes with the database
