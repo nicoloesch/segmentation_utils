@@ -5,7 +5,7 @@ from PyQt5.QtCore import QPointF, Qt, QRectF, QRect, pyqtSignal
 from copy import deepcopy
 from typing import Tuple, Union, List
 import numpy as np
-from seg_utils.config import VERTEX_SIZE
+from seg_utils.config import VERTEX_SIZE, SCALING_INITIAL
 
 from seg_utils.utils.qt import closestEuclideanDistance
 
@@ -50,18 +50,17 @@ class Shape(QGraphicsItem):
     def initShape(self):
         if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', 'trace', None]:
             raise AttributeError("Unsupported Shape")
+        # Add additional points
+        if self.shape_type in ['rectangle', 'circle'] and len(self.points) == 2:
+            self.getCorners()
         if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
-            if self.shape_type == 'rectangle' and len(self.points) == 2:
-                # this means it is a rectangle consisting only of upper left and lower right hand corner
-                self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
-                self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
             self.initPath()
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = self.path.boundingRect()
 
         elif self.shape_type == "circle":
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
-            self._bounding_rect = QRectF(self.points[0], self.points[1])
+            self._bounding_rect = QRectF(self.points[0], self.points[2])
 
     def initPath(self):
         self.path = QPainterPath()
@@ -72,11 +71,38 @@ class Shape(QGraphicsItem):
             # This is for drawing the initial traces and polygons such that they do not end and close immediately
             self.path.closeSubpath()
 
-    def updatePath(self, vNum: int, newPos: QPointF):
-        if self.path.elementAt(vNum):
-            self.path.setElementPositionAt(vNum, newPos.x(), newPos.y())
-            self.points[vNum] = newPos
-            self.vertices.vertices[vNum] = newPos
+    def getCorners(self):
+        """This function generates the other bounding points of the shape"""
+        self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))
+        self.points.append(QPointF(self.points[0].x(), self.points[2].y()))
+
+    def updateShape(self, vNum: int, newPos: QPointF):
+        if self.shape_type == 'polygon':
+            if self.path.elementAt(vNum):
+                self.path.setElementPositionAt(vNum, newPos.x(), newPos.y())
+                self.points[vNum] = newPos
+                self.vertices.vertices[vNum] = newPos
+        elif self.shape_type in ['rectangle', 'circle']:
+            fixed_point = vNum - 2  # this point is the anchor a.k.a the point diagonally from the selected one
+            points = self.QPointFToList([self.points[fixed_point], newPos])
+
+            # the upper left has always the lowest x and y whereas the bottom right has the maximum
+            min_ = np.min(points, 0)
+            max_ = np.max(points, 0)
+
+            #### HERE IS THE ISSUE
+            # If a vertex is moved beyond the initial boundaries of the rectangle, the vertex is no longer e.g. the
+            # lower right one but turns in the upper right one. This alters the order within the points drastically
+            # and as of yet i dont know how to fix it
+
+            upper_left = QPointF(min_[0], min_[1])
+            lower_right = QPointF(max_[0], max_[1])
+            self.points = [upper_left, lower_right]
+            self.getCorners()
+            if self.shape_type == 'rectangle':
+                self.initPath()
+            self._bounding_rect = QRectF(self.points[0], self.points[2])
+            self.vertices.vertices = self.points
 
     def boundingRect(self) -> QRectF:
         return self._bounding_rect
@@ -89,8 +115,6 @@ class Shape(QGraphicsItem):
         if 'label' in label_dict:
             self.label = label_dict['label']
         if 'points' in label_dict:
-            # TODO: right now i assume List[List[float, float]]
-            #   has to be adapted as soon as i settled on how to save the stuff in the SQL database
             self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
         if 'shape_type' in label_dict:
             self.shape_type = label_dict['shape_type']
@@ -121,8 +145,18 @@ class Shape(QGraphicsItem):
                 painter.drawPath(self.path)
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
-                painter.drawEllipse(QRectF(self.points[0], self.points[1]))
-                # maybe paint the vertices? But the bounding rect should only be visible on select
+                painter.drawEllipse(QRectF(self.points[0], self.points[2]))
+                if self.b_isSelected or self.b_isHighlighted or self.vertices.selectedVertex != -1:
+                    self.vertices.paint(painter)
+
+    def setScaling(self, zoom: int, max_size: int):
+        r"""Sets the zoom coming from the imageviewer as the vertices can be displayed with different size.
+        Currently, the max size is not used but is left in for future iterations"""
+        if zoom <= 5:
+            _scaling = SCALING_INITIAL/zoom
+        else:
+            _scaling = 1
+        self.vertices._scaling = _scaling
 
     def contains(self, point: QPointF) -> bool:
         r"""Reimplementation as the initial method for a QGraphicsItem uses the shape,
@@ -135,12 +169,10 @@ class Shape(QGraphicsItem):
             # elliptic formula is (x²/a² + y²/b² = 1) so if the point fulfills the equation respectively
             # is smaller than 1, the points is inside
 
-            a = (self.points[0].x() - self.points[1].x())/2.0
-            b = (self.points[0].y() - self.points[1].y())/2.0
-            diagonal_vector = (self.points[1] - self.points[0])/2.0
-            centerpoint = self.points[0] + diagonal_vector
-            # TODO: maybe i dont need the abs here as i restrict it to the boundaries of the image
-            centerpoint = QPointF(abs(centerpoint.x()), abs(centerpoint.y()))
+            rect = self.boundingRect()
+            centerpoint = rect.center()
+            a = rect.width()/2
+            b = rect.height()/2
             value = (point.x()-centerpoint.x()) ** 2 / a ** 2 + (point.y() - centerpoint.y()) ** 2 / b ** 2
             if value <= 1:
                 return True
@@ -150,6 +182,10 @@ class Shape(QGraphicsItem):
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
         return [QPointF(*_pt) for _pt in point_list]
+
+    @staticmethod
+    def QPointFToList(point_list: List[QPointF]) -> List[List[float]]:
+        return [[pt.x(), pt.y()] for pt in point_list]
 
     def initColor(self, color: QColor):
         if color:
@@ -162,6 +198,11 @@ class Shape(QGraphicsItem):
             self.brush_color.setAlphaF(0.5)
             self.vertices.updateColor(self.line_color, self.brush_color)
 
+    @staticmethod
+    def QRectFToPoints(rectangle: QRectF) -> List[QPointF]:
+        r"""This function returns the bounding points of a QRectF in clockwise order starting with the top left"""
+        return [rectangle.topLeft(), rectangle.topRight(), rectangle.bottomRight(), rectangle.bottomLeft()]
+
 class VertexCollection(object):
     def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
         self.vertices = points
@@ -169,9 +210,10 @@ class VertexCollection(object):
         self.brush_color = brush_color
         self.highlight_color = Qt.GlobalColor.white
         self.vertex_size = vertex_size
-        self._highlight_size = 0.1
+        self._highlight_size = 1
         self.highlightedVertex = -1
         self.selectedVertex = -1
+        self._scaling = SCALING_INITIAL
 
     def paint(self, painter: QPainter):
         for _idx, _vertex in enumerate(self.vertices):
@@ -180,15 +222,13 @@ class VertexCollection(object):
             painter.setBrush(QBrush(self.brush_color))
 
             if _idx == self.selectedVertex:
-                # highlight only the selected vertex
                 painter.setBrush(QBrush(self.highlight_color))
                 painter.setPen(QPen(self.highlight_color, 0.5))
-                # size = (self.vertex_size+self._highlight_size) / 2
-                size = self.vertex_size / 2
+                size = (self.vertex_size * self._scaling) / 2
 
             elif _idx == self.highlightedVertex:
                 painter.setBrush(QBrush(self.highlight_color))
-                size = self.vertex_size / 2
+                size = (self.vertex_size * self._scaling) / 2
             else:
                 size = self.vertex_size / 2  # determines the diagonal of the rectangle
             painter.drawRect(QRectF(qtpoint - QPointF(size, size),
@@ -203,7 +243,10 @@ class VertexCollection(object):
         """Check if a point is within the closest vertex rectangle"""
         closestVertex = self.closestVertex(np.asarray([point.x(), point.y()]))
         vertexCenter = self.vertices[closestVertex]
-        size = self.vertex_size / 2
+        if closestVertex in [self.highlightedVertex, self.selectedVertex]:
+            size = (self.vertex_size * self._scaling) / 2
+        else:
+            size = self.vertex_size / 2
         vertexRect = QRectF(vertexCenter - QPointF(size, size),
                             vertexCenter + QPointF(size, size))
 

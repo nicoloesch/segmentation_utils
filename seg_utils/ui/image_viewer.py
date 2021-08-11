@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from PyQt5.QtWidgets import QGraphicsView
 from PyQt5.QtGui import QResizeEvent
-from PyQt5.QtCore import QSize, Qt, QRectF
+from PyQt5.QtCore import QSize, Qt, QRectF, pyqtSignal
 
 
 from seg_utils.ui.graphics_scene import ImageViewerScene
@@ -14,6 +14,7 @@ from seg_utils.ui.canvas import Canvas
 
 class ImageViewer(QGraphicsView):
 
+    sig_ZoomLevelChanged = pyqtSignal(int)
     def __init__(self, *args):
         super(ImageViewer, self).__init__(*args)
         self.canvas = Canvas()
@@ -30,7 +31,8 @@ class ImageViewer(QGraphicsView):
         self.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
 
         # Protected Item
-        self._zoom = 0
+        self._zoom = 1
+        self._scalingfactor = 5/4
         self._enableZoomPan = False
 
     def setInitialized(self):
@@ -48,7 +50,7 @@ class ImageViewer(QGraphicsView):
                 factor = min(viewrect.width() / scenerect.width(),
                              viewrect.height() / scenerect.height())
                 self.scale(factor, factor)
-            self._zoom = 0
+            self._zoom = 1
 
     def resizeEvent(self, event: QResizeEvent) -> None:
         bounds = self.scene.itemsBoundingRect()
@@ -60,19 +62,20 @@ class ImageViewer(QGraphicsView):
             if self._enableZoomPan:
                 if event.angleDelta().y() > 0:
                     # Forward Scroll
-                    factor = 1.25
-                    self._zoom += 1
+                    factor = self._scalingfactor
+                    self._zoom *= self._scalingfactor
                 else:
                     # Backwards scroll
-                    factor = 0.8
-                    self._zoom -= 1
+                    factor = 1/self._scalingfactor
+                    self._zoom /= self._scalingfactor
 
-                if self._zoom > 0:
+                if self._zoom > 1:
                     self.scale(factor, factor)
-                elif self._zoom == 0:
+                elif self._zoom == 1:
                     self.fitInView(QRectF(self.canvas.rect()))
                 else:
-                    self._zoom = 0
+                    self._zoom = 1
+            self.sig_ZoomLevelChanged.emit(self._zoom)
 
     def keyPressEvent(self, event) -> None:
         if not self.b_isEmpty:
@@ -86,18 +89,6 @@ class ImageViewer(QGraphicsView):
                 self._enableZoomPan = False
                 self.setDragMode(QGraphicsView.NoDrag)
 
-    """
-    def contextMenuEvent(self, event) -> None:
-        four = 4
-        pass
-        #contextMenu = QMenu(self)
-        #action = contextMenu.exec_(self.mapToGlobal())
-    
-    def mousePressEvent(self, event):
-        if self._image.isUnderMouse():
-            self.imageDragged.emit(self.mapToScene(event.pos()).toPoint())
-        super(ImageViewer, self).mousePressEvent(event)
-    """
 
 
 

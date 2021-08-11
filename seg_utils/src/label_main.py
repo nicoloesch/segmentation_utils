@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QMessageB
 from PyQt5.QtGui import QPixmap, QIcon
 
 from typing import Tuple, List, Union
+from numpy import argmax
 
 from seg_utils.utils.database import SQLiteDatabase
 from seg_utils.utils import qt
@@ -13,7 +14,6 @@ from seg_utils.src.actions import Action
 from seg_utils.ui.label_ui import LabelUI
 from seg_utils.ui.shape import Shape
 from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox, DeleteShapeMessageBox
-
 from seg_utils.config import VERTEX_SIZE
 
 import pathlib
@@ -142,6 +142,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.scene.sig_ShapeHovered.connect(self.imageDisplay.canvas.handleShapeHovered)
         self.imageDisplay.scene.sig_ShapeSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
         self.sig_LabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
+        self.imageDisplay.sig_ZoomLevelChanged.connect(self.on_zoomLevelChanged)
 
         # ContextMenu
         self.imageDisplay.scene.sig_RequestContextMenu.connect(self.on_requestContextMenu)
@@ -207,6 +208,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.canvas.setPixmap(image)
         self.imageDisplay.canvas.setLabels(self.current_labels)
         self.fileList.setCurrentRow(self.img_idx)
+        self.on_zoomLevelChanged(1)
 
     def initContextMenu(self, actions: Tuple[Action]):
         for action in actions:
@@ -346,6 +348,8 @@ class LabelMain(QMainWindow, LabelUI):
         r"""Function to enable the drawing but also uncheck all other buttons"""
         action = self.toolBar.getWidgetForAction(f'Draw{shape_type.capitalize()}')
         self.setOtherButtonsUnchecked(action)
+        self.imageDisplay.canvas.resetHighlight()
+        self.imageDisplay.canvas.resetSelection()
         if action.isChecked():
             self.imageDisplay.scene.setMode(self.CREATE)
             self.imageDisplay.scene.setShapeType(shape_type)
@@ -411,11 +415,13 @@ class LabelMain(QMainWindow, LabelUI):
     def on_moveVertex(self, vShape: int, vNum: int, newPos: QPointF, shape_type: str):
         if vShape != -1:
             if self.current_labels[vShape].vertices.selectedVertex != -1:
-                self.current_labels[vShape].updatePath(vNum, newPos)
-                # This call updates it way quicker
-                # TODO: maybe updatePath function in canvas so it only updats one shape and not all of them
-                #   but with call to self.update()
+                self.current_labels[vShape].updateShape(vNum, newPos)
                 self.imageDisplay.canvas.setLabels(self.current_labels)
+
+    def on_zoomLevelChanged(self, zoom: int):
+        for shape in self.current_labels:
+            size = [self.imageDisplay.canvas.pixmap.width(), self.imageDisplay.canvas.pixmap.height()]
+            shape.setScaling(zoom, size[argmax(size)])
 
 
     def checkForChanges(self) -> int:

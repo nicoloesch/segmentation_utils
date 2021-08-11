@@ -92,7 +92,6 @@ class Canvas(QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
-        print(randint(0, 100))
         self._painter.begin(self)
         self._painter.setRenderHint(QPainter.Antialiasing)
         self._painter.setRenderHint(QPainter.HighQualityAntialiasing)

@@ -85,4 +85,5 @@ def get_config(config_file_or_yaml=None, config_from_args=None):
 
 
 # OTHER PARAMETERS
-VERTEX_SIZE = 2
+VERTEX_SIZE = 2 # this has to be adapted in the future to be dependent on the image size
+SCALING_INITIAL = 5 # this has to be adapted in the future to be dependent on the image size

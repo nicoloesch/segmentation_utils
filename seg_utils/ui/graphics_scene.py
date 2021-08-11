@@ -111,7 +111,6 @@ class ImageViewerScene(QGraphicsScene):
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
                     self.sig_ShapeHovered.emit(self.hShape, self.vShape, self.vNum)
 
-
     def mouseReleaseEvent(self, event) -> None:
         if self.b_isInitialized:
             if event.button() == Qt.MouseButton.LeftButton:
@@ -125,6 +124,7 @@ class ImageViewerScene(QGraphicsScene):
                         self.setClosedPath()
                 else:
                     self._startButtonPressed = False
+
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
         r"""Check if event position is within the boundaries of a shape
 
