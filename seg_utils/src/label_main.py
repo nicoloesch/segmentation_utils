@@ -18,6 +18,8 @@ from seg_utils.config import VERTEX_SIZE
 
 import pathlib
 
+
+
 IMAGES_DIR = "images/"
 
 
@@ -149,6 +151,9 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
 
+        # Altering Shape Events
+        self.imageDisplay.scene.sig_MoveVertex.connect(self.on_moveVertex)
+
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
         self.basedir = pathlib.Path(database).parents[0]
@@ -230,8 +235,7 @@ class LabelMain(QMainWindow, LabelUI):
     def handleUpdatePolyList(self, _item_idx):
         for _idx in range(self.polyList.count()):
             self.polyList.item(_idx).setSelected(False)
-        if _item_idx > -1:
-            self.polyList.item(_item_idx).setSelected(True)
+        self.polyList.item(_item_idx).setSelected(True)
 
     def handlePolyListSelection(self, item):
         r"""Returns the row index within the list such that the plotter in canvas can update it"""
@@ -403,6 +407,16 @@ class LabelMain(QMainWindow, LabelUI):
             # Delete the shape
             self.current_labels.pop(self._selectedShape)
             self.updateLabels()
+
+    def on_moveVertex(self, vShape: int, vNum: int, newPos: QPointF, shape_type: str):
+        if vShape != -1:
+            if self.current_labels[vShape].vertices.selectedVertex != -1:
+                self.current_labels[vShape].updatePath(vNum, newPos)
+                # This call updates it way quicker
+                # TODO: maybe updatePath function in canvas so it only updats one shape and not all of them
+                #   but with call to self.update()
+                self.imageDisplay.canvas.setLabels(self.current_labels)
+
 
     def checkForChanges(self) -> int:
         r"""Check for changes with the database

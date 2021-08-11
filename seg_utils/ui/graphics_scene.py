@@ -10,14 +10,14 @@ from numpy import argmax
 
 
 class ImageViewerScene(QGraphicsScene):
-    sig_ShapeHovered = pyqtSignal(int)
+    sig_ShapeHovered = pyqtSignal(int, int, int)
     sig_ShapeSelected = pyqtSignal(int, int, int)
-    sig_VertexHovered = pyqtSignal()  # TODO: MAYBE implement the highlighting of the vertices
 
     sig_RequestContextMenu = pyqtSignal(int, QPoint)
 
     sig_Drawing = pyqtSignal(list, str)
     sig_DrawingDone = pyqtSignal(list, str)
+    sig_MoveVertex = pyqtSignal(int, int, QPointF, str)
 
     CREATE, EDIT = 0, 1
 
@@ -31,7 +31,12 @@ class ImageViewerScene(QGraphicsScene):
         self.poly_points = []  # list of points for the polygon drawing
         self.contextMenu = QMenu()
         self.b_contextMenuAvail = False
-
+        
+        # this is for highlighting
+        self.hShape = -1
+        self.vShape = -1
+        self.vNum = -1
+        
     def isInDrawingMode(self) -> bool:
         """Returns true if currently in drawing mode"""
         return self.mode == self.CREATE
@@ -74,23 +79,15 @@ class ImageViewerScene(QGraphicsScene):
                             self.poly_points.append(self.starting_point)
                             self.sig_Drawing.emit(self.poly_points, self.shape_type)
                 else:
-                    hShape, vShape, vNum = self.isMouseOnShape(event)
-                    self.sig_ShapeSelected.emit(hShape, vShape, vNum)
+                    self._startButtonPressed = True
+                    self.starting_point = event.scenePos()
+                    self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
+                    self.sig_ShapeSelected.emit(self.hShape, self.vShape, self.vNum)
 
             elif event.button() == Qt.MouseButton.RightButton:
                 if not self.isInDrawingMode():
                     sel_shape = self.isShapeSelected()
                     self.sig_RequestContextMenu.emit(sel_shape, event.screenPos())
-                    """
-                    if sel_shape != -1:
-                        self.b_contextMenuAvail = True
-                        for act in self.contextMenu.actions():
-                            act.setEnabled(True)
-                    else:
-                        self.b_contextMenuAvail = False
-                        for act in self.contextMenu.actions():
-                            act.setEnabled(False)
-                    """
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for moving the mouse. Currently only for selecting the shapes
@@ -108,8 +105,12 @@ class ImageViewerScene(QGraphicsScene):
                         elif self.shape_type in ['circle', 'rectangle']:
                             self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
             else:
-                hShape, vShape, vNum = self.isMouseOnShape(event)
-                self.sig_ShapeHovered.emit(hShape)
+                if self._startButtonPressed:
+                    self.sig_MoveVertex.emit(self.vShape, self.vNum, event.scenePos(), self.shape_type)
+                else:
+                    self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
+                    self.sig_ShapeHovered.emit(self.hShape, self.vShape, self.vNum)
+
 
     def mouseReleaseEvent(self, event) -> None:
         if self.b_isInitialized:
@@ -122,7 +123,8 @@ class ImageViewerScene(QGraphicsScene):
                         self.starting_point = QPointF()
                     elif self.shape_type in ['trace']:
                         self.setClosedPath()
-
+                else:
+                    self._startButtonPressed = False
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
         r"""Check if event position is within the boundaries of a shape
 

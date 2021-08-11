@@ -55,7 +55,7 @@ class Shape(QGraphicsItem):
                 # this means it is a rectangle consisting only of upper left and lower right hand corner
                 self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))  # upper right corner
                 self.points.append(QPointF(self.points[0].x(), self.points[2].y()))  # lower left corner
-            self.updatePath()
+            self.initPath()
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = self.path.boundingRect()
 
@@ -63,7 +63,7 @@ class Shape(QGraphicsItem):
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
             self._bounding_rect = QRectF(self.points[0], self.points[1])
 
-    def updatePath(self):
+    def initPath(self):
         self.path = QPainterPath()
         self.path.moveTo(self.points[0])
         for _pnt in self.points[1:]:
@@ -71,6 +71,12 @@ class Shape(QGraphicsItem):
         if self.shape_type not in ['lines', 'trace']:
             # This is for drawing the initial traces and polygons such that they do not end and close immediately
             self.path.closeSubpath()
+
+    def updatePath(self, vNum: int, newPos: QPointF):
+        if self.path.elementAt(vNum):
+            self.path.setElementPositionAt(vNum, newPos.x(), newPos.y())
+            self.points[vNum] = newPos
+            self.vertices.vertices[vNum] = newPos
 
     def boundingRect(self) -> QRectF:
         return self._bounding_rect
@@ -164,7 +170,7 @@ class VertexCollection(object):
         self.highlight_color = Qt.GlobalColor.white
         self.vertex_size = vertex_size
         self._highlight_size = 0.1
-        self.b_isHighlighted = False
+        self.highlightedVertex = -1
         self.selectedVertex = -1
 
     def paint(self, painter: QPainter):
@@ -176,7 +182,12 @@ class VertexCollection(object):
             if _idx == self.selectedVertex:
                 # highlight only the selected vertex
                 painter.setBrush(QBrush(self.highlight_color))
+                painter.setPen(QPen(self.highlight_color, 0.5))
                 # size = (self.vertex_size+self._highlight_size) / 2
+                size = self.vertex_size / 2
+
+            elif _idx == self.highlightedVertex:
+                painter.setBrush(QBrush(self.highlight_color))
                 size = self.vertex_size / 2
             else:
                 size = self.vertex_size / 2  # determines the diagonal of the rectangle

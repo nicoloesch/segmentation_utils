@@ -7,6 +7,7 @@ from typing import List
 
 from seg_utils.ui.shape import Shape
 
+from random import randint
 
 class Canvas(QWidget):
     r"""Base drawing widget as it should be instantiated and then connected to a scene
@@ -53,31 +54,34 @@ class Canvas(QWidget):
 
         self.update()
 
-    @pyqtSlot(int)
-    def handleShapeHovered(self, _item_idx: int):
+    def handleShapeHovered(self,  shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
+        """Handles both shape and vertex highlighting in one call as I then only have to update it once"""
         self.resetHighlight()
-        if _item_idx > -1:
-            self.labels[_item_idx].b_isHighlighted = True
+        if shape_idx > -1:
+            self.labels[shape_idx].b_isHighlighted = True
+        self.handleVertexHighlighted(closest_vertex_shape, vertex_idx)
         self.update()
 
-    def handleShapeSelected(self, item_idx: int, shape_idx: int, vertex_idx: int):
+    def handleShapeSelected(self, shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
         self.resetSelection()
-        if item_idx > -1:
-            self.labels[item_idx].b_isSelected = True
-        self.sig_RequestLabelListUpdate.emit(item_idx)
-        self.handleVertexHighlighted(shape_idx, vertex_idx)
+        if shape_idx != -1:
+            self.labels[shape_idx].b_isSelected = True
+            self.sig_RequestLabelListUpdate.emit(shape_idx)
+        self.handleVertexSelected(closest_vertex_shape, vertex_idx)
         self.update()
 
     def handleVertexHighlighted(self, shape_idx: int, vertex_idx: int):
-        r"""Only highlighted or not no matter if clicked or just hovered"""
-        if shape_idx > -1:
-            self.labels[shape_idx].vertices.b_isHighlighted = True
+        if shape_idx != -1:
+            self.labels[shape_idx].vertices.highlightedVertex = vertex_idx
+
+    def handleVertexSelected(self, shape_idx: int, vertex_idx: int):
+        if vertex_idx != -1:
             self.labels[shape_idx].vertices.selectedVertex = vertex_idx
 
     def resetHighlight(self):
         for label in self.labels:
             label.b_isHighlighted = False
-            label.vertices.b_isHighlighted = False
+            label.vertices.highlightedVertex = -1
 
     def resetSelection(self):
         for label in self.labels:
@@ -88,6 +92,7 @@ class Canvas(QWidget):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
 
+        print(randint(0, 100))
         self._painter.begin(self)
         self._painter.setRenderHint(QPainter.Antialiasing)
         self._painter.setRenderHint(QPainter.HighQualityAntialiasing)
