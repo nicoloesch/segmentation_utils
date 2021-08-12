@@ -149,12 +149,13 @@ class LabelMain(QMainWindow, LabelUI):
         self.polyList.sig_RequestContextMenu.connect(self.on_requestContextMenu)
 
         # Drawing Events
-        self.imageDisplay.scene.sig_RequestAnchorReset.connect(self.on_anchorRest)
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
 
         # Altering Shape Events
         self.imageDisplay.scene.sig_MoveVertex.connect(self.on_moveVertex)
+        self.imageDisplay.scene.sig_MoveShape.connect(self.on_moveShape)
+        self.imageDisplay.scene.sig_RequestAnchorReset.connect(self.on_anchorRest)
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -413,11 +414,15 @@ class LabelMain(QMainWindow, LabelUI):
             self.current_labels.pop(self._selectedShape)
             self.updateLabels()
 
-    def on_moveVertex(self, vShape: int, vNum: int, newPos: QPointF, shape_type: str):
+    def on_moveVertex(self, vShape: int, vNum: int, newPos: QPointF):
         if vShape != -1:
             if self.current_labels[vShape].vertices.selectedVertex != -1:
                 self.current_labels[vShape].updateShape(vNum, newPos)
                 self.imageDisplay.canvas.setLabels(self.current_labels)
+
+    def on_moveShape(self, hShape: int, displacement: QPointF):
+        self.current_labels[hShape].move(displacement)
+        self.imageDisplay.canvas.setLabels(self.current_labels)
 
     def on_anchorRest(self, vShape: int):
         """Handles the reset of the anchor upon the mouse release within the respective label/shape"""

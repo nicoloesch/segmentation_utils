@@ -1,9 +1,9 @@
-from PyQt5.QtWidgets import QGraphicsItem
+from PyQt5.QtWidgets import QGraphicsItem, QWidget, QStyleOptionGraphicsItem
 from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
 from PyQt5.QtCore import QPointF, Qt, QRectF, QRect, pyqtSignal
 
 from copy import deepcopy
-from typing import Tuple, Union, List
+from typing import Tuple, Union, List, Optional
 import numpy as np
 from seg_utils.config import VERTEX_SIZE, SCALING_INITIAL
 
@@ -48,6 +48,30 @@ class Shape(QGraphicsItem):
         else:
             return False
 
+    def boundingRect(self) -> QRectF:
+        return self._bounding_rect
+
+    def from_dict(self, label_dict: dict, color: QColor):
+        r"""Method to create a Shape from a dict, which is stored in the SQL database"""
+        if 'label' in label_dict:
+            self.label = label_dict['label']
+        if 'points' in label_dict:
+            self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
+        if 'shape_type' in label_dict:
+            self.shape_type = label_dict['shape_type']
+        if 'flags' in label_dict:
+            self.flags = label_dict['flags']
+        if 'group_id' in label_dict:
+            self.group_id = label_dict['group_id']
+
+        self.initColor(color)
+        self.initShape()
+        return self
+
+    def to_dict(self):
+        r"""Method to store the current shape in the SQL Database"""
+        pass
+
     def initShape(self):
         if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', 'trace', None]:
             raise AttributeError("Unsupported Shape")
@@ -71,6 +95,17 @@ class Shape(QGraphicsItem):
         if self.shape_type not in ['lines', 'trace']:
             # This is for drawing the initial traces and polygons such that they do not end and close immediately
             self.path.closeSubpath()
+
+    def initColor(self, color: QColor):
+        if color:
+            self.line_color, self.brush_color = color, deepcopy(color)
+            self.brush_color.setAlphaF(0.5)
+
+    def updateColor(self, color: QColor):
+        if color:
+            self.line_color, self.brush_color = color, deepcopy(color)
+            self.brush_color.setAlphaF(0.5)
+            self.vertices.updateColor(self.line_color, self.brush_color)
 
     def getCorners(self):
         """This function generates the other bounding points of the shape"""
@@ -107,34 +142,7 @@ class Shape(QGraphicsItem):
                 self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
                 self._bounding_rect = QRectF(self.points[0], self.points[2])
 
-    def boundingRect(self) -> QRectF:
-        return self._bounding_rect
-
-    def boundingRectNonF(self) -> QRect:
-        return QRect(*self._bounding_rect.getRect())
-
-    def from_dict(self, label_dict: dict, color: QColor):
-        r"""Method to create a Shape from a dict, which is stored in the SQL database"""
-        if 'label' in label_dict:
-            self.label = label_dict['label']
-        if 'points' in label_dict:
-            self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
-        if 'shape_type' in label_dict:
-            self.shape_type = label_dict['shape_type']
-        if 'flags' in label_dict:
-            self.flags = label_dict['flags']
-        if 'group_id' in label_dict:
-            self.group_id = label_dict['group_id']
-
-        self.initColor(color)
-        self.initShape()
-        return self
-
-    def to_dict(self):
-        r"""Method to store the current shape in the SQL Database"""
-        pass
-
-    def paint(self, painter: QPainter): # option: 'QStyleOptionGraphicsItem', widget: typing.Optional[QWidget] = ...) -> None:
+    def paint(self, painter: QPainter) -> None:
         if len(self.points) > 0:
             if not self.b_isSelected:
                 painter.setPen(QPen(self.line_color, 1))  # TODO: pen width depending on the image size
@@ -171,7 +179,6 @@ class Shape(QGraphicsItem):
         elif self.shape_type in ['circle']:
             # elliptic formula is (x²/a² + y²/b² = 1) so if the point fulfills the equation respectively
             # is smaller than 1, the points is inside
-
             rect = self.boundingRect()
             centerpoint = rect.center()
             a = rect.width()/2
@@ -182,6 +189,17 @@ class Shape(QGraphicsItem):
             else:
                 return False
 
+    def move(self, displacement: QPointF) -> None:
+        r"""Moves the shape by the given displacement"""
+        self.points = [_pt-displacement for _pt in self.points]
+        self.vertices.vertices = self.points
+        if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
+            self.initPath()
+            self._bounding_rect = self.path.boundingRect()
+
+        elif self.shape_type == "circle":
+            self._bounding_rect = QRectF(self.points[0], self.points[2])
+
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
         return [QPointF(*_pt) for _pt in point_list]
@@ -189,17 +207,6 @@ class Shape(QGraphicsItem):
     @staticmethod
     def QPointFToList(point_list: List[QPointF]) -> List[List[float]]:
         return [[pt.x(), pt.y()] for pt in point_list]
-
-    def initColor(self, color: QColor):
-        if color:
-            self.line_color, self.brush_color = color, deepcopy(color)
-            self.brush_color.setAlphaF(0.5)
-
-    def updateColor(self, color: QColor):
-        if color:
-            self.line_color, self.brush_color = color, deepcopy(color)
-            self.brush_color.setAlphaF(0.5)
-            self.vertices.updateColor(self.line_color, self.brush_color)
 
     @staticmethod
     def QRectFToPoints(rectangle: QRectF) -> List[QPointF]:

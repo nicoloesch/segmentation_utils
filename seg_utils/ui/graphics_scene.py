@@ -18,7 +18,8 @@ class ImageViewerScene(QGraphicsScene):
 
     sig_Drawing = pyqtSignal(list, str)
     sig_DrawingDone = pyqtSignal(list, str)
-    sig_MoveVertex = pyqtSignal(int, int, QPointF, str)
+    sig_MoveVertex = pyqtSignal(int, int, QPointF)
+    sig_MoveShape = pyqtSignal(int, QPointF)
 
     CREATE, EDIT = 0, 1
 
@@ -28,6 +29,7 @@ class ImageViewerScene(QGraphicsScene):
         self.mode = self.EDIT
         self.shape_type = None
         self.starting_point = QPointF()
+        self.last_point = QPointF()
         self._startButtonPressed = False
         self.poly_points = []  # list of points for the polygon drawing
         self.contextMenu = QMenu()
@@ -53,12 +55,6 @@ class ImageViewerScene(QGraphicsScene):
         for action in actions:
             self.contextMenu.addAction(action)
 
-    """
-    def contextMenuEvent(self, event) -> None:
-        if self.b_contextMenuAvail:
-            self.contextMenu.exec(event.screenPos())
-    """
-
     def setClosedPath(self):
         self._startButtonPressed = False
         self.sig_DrawingDone.emit(self.poly_points, self.shape_type)
@@ -82,6 +78,7 @@ class ImageViewerScene(QGraphicsScene):
                 else:
                     self._startButtonPressed = True
                     self.starting_point = event.scenePos()
+                    self.last_point = self.starting_point
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
                     self.sig_ShapeSelected.emit(self.hShape, self.vShape, self.vNum)
 
@@ -107,7 +104,11 @@ class ImageViewerScene(QGraphicsScene):
                             self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
             else:
                 if self._startButtonPressed:
-                    self.sig_MoveVertex.emit(self.vShape, self.vNum, event.scenePos(), self.shape_type)
+                    if self.hShape != -1:
+                        self.sig_MoveShape.emit(self.hShape, self.last_point - event.scenePos())
+                        self.last_point = event.scenePos()
+                    else:
+                        self.sig_MoveVertex.emit(self.vShape, self.vNum, event.scenePos())
                 else:
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
                     self.sig_ShapeHovered.emit(self.hShape, self.vShape, self.vNum)
