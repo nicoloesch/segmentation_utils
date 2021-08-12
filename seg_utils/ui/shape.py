@@ -31,6 +31,7 @@ class Shape(QGraphicsItem):
         self.path = None
         self.vertices = None
         self._bounding_rect = None
+        self._anchorPoint = None
 
         # distinction between highlighted (hovering over it) and selecting it (click)
         self.b_isHighlighted = False
@@ -76,6 +77,10 @@ class Shape(QGraphicsItem):
         self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))
         self.points.append(QPointF(self.points[0].x(), self.points[2].y()))
 
+    def resetAnchor(self):
+        """Resets the anchor set """
+        self._anchorPoint = None
+
     def updateShape(self, vNum: int, newPos: QPointF):
         if self.shape_type == 'polygon':
             if self.path.elementAt(vNum):
@@ -83,26 +88,24 @@ class Shape(QGraphicsItem):
                 self.points[vNum] = newPos
                 self.vertices.vertices[vNum] = newPos
         elif self.shape_type in ['rectangle', 'circle']:
-            fixed_point = vNum - 2  # this point is the anchor a.k.a the point diagonally from the selected one
-            points = self.QPointFToList([self.points[fixed_point], newPos])
-
-            # the upper left has always the lowest x and y whereas the bottom right has the maximum
-            min_ = np.min(points, 0)
-            max_ = np.max(points, 0)
-
-            #### HERE IS THE ISSUE
-            # If a vertex is moved beyond the initial boundaries of the rectangle, the vertex is no longer e.g. the
-            # lower right one but turns in the upper right one. This alters the order within the points drastically
-            # and as of yet i dont know how to fix it
-
-            upper_left = QPointF(min_[0], min_[1])
-            lower_right = QPointF(max_[0], max_[1])
-            self.points = [upper_left, lower_right]
-            self.getCorners()
-            if self.shape_type == 'rectangle':
+            if not self._anchorPoint:
+                # this point is the anchor a.k.a the point diagonally from the selected one
+                # however, as i am rebuilding the shape from there, i only need to select the anchor once and store it
+                self._anchorPoint = self.points[vNum - 2]
+            self.points = [self._anchorPoint, newPos]
+            if self.shape_type in ['rectangle', 'circle'] and len(self.points) == 2:
+                self.getCorners()
+            if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
                 self.initPath()
-            self._bounding_rect = QRectF(self.points[0], self.points[2])
-            self.vertices.vertices = self.points
+                # reset the selected vertex as the ordering within the bounding rectangle changes
+                self.vertices.vertices = self.points
+                self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
+                self._bounding_rect = self.path.boundingRect()
+
+            elif self.shape_type == "circle":
+                self.vertices.vertices = self.points
+                self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
+                self._bounding_rect = QRectF(self.points[0], self.points[2])
 
     def boundingRect(self) -> QRectF:
         return self._bounding_rect
@@ -203,6 +206,7 @@ class Shape(QGraphicsItem):
         r"""This function returns the bounding points of a QRectF in clockwise order starting with the top left"""
         return [rectangle.topLeft(), rectangle.topRight(), rectangle.bottomRight(), rectangle.bottomLeft()]
 
+
 class VertexCollection(object):
     def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
         self.vertices = points
@@ -259,6 +263,10 @@ class VertexCollection(object):
         if line_color and brush_color:
             self.line_color = line_color
             self.brush_color = brush_color
+
+    def updateSelAndHigh(self, newPos: np.ndarray):
+        idx = self.closestVertex(newPos)
+        self.selectedVertex = self.highlightedVertex = idx
 
     @staticmethod
     def ListQPointF_to_Numpy(point_list: List[QPointF]):

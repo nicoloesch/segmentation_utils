@@ -149,6 +149,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.polyList.sig_RequestContextMenu.connect(self.on_requestContextMenu)
 
         # Drawing Events
+        self.imageDisplay.scene.sig_RequestAnchorReset.connect(self.on_anchorRest)
         self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
         self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
 
@@ -418,11 +419,14 @@ class LabelMain(QMainWindow, LabelUI):
                 self.current_labels[vShape].updateShape(vNum, newPos)
                 self.imageDisplay.canvas.setLabels(self.current_labels)
 
+    def on_anchorRest(self, vShape: int):
+        """Handles the reset of the anchor upon the mouse release within the respective label/shape"""
+        self.current_labels[vShape].resetAnchor()
+
     def on_zoomLevelChanged(self, zoom: int):
         for shape in self.current_labels:
             size = [self.imageDisplay.canvas.pixmap.width(), self.imageDisplay.canvas.pixmap.height()]
             shape.setScaling(zoom, size[argmax(size)])
-
 
     def checkForChanges(self) -> int:
         r"""Check for changes with the database

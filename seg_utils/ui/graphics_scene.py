@@ -14,6 +14,7 @@ class ImageViewerScene(QGraphicsScene):
     sig_ShapeSelected = pyqtSignal(int, int, int)
 
     sig_RequestContextMenu = pyqtSignal(int, QPoint)
+    sig_RequestAnchorReset = pyqtSignal(int)
 
     sig_Drawing = pyqtSignal(list, str)
     sig_DrawingDone = pyqtSignal(list, str)
@@ -123,6 +124,7 @@ class ImageViewerScene(QGraphicsScene):
                     elif self.shape_type in ['trace']:
                         self.setClosedPath()
                 else:
+                    self.sig_RequestAnchorReset.emit(self.vShape)
                     self._startButtonPressed = False
 
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
