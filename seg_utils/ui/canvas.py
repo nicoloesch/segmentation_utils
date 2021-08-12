@@ -1,13 +1,13 @@
 from PyQt5.QtCore import QRectF, pyqtSignal, pyqtSlot, QPointF
 from PyQt5.QtGui import QPixmap, QPainter, QColor
 from PyQt5.QtWidgets import QWidget
+
 from seg_utils.config import VERTEX_SIZE
-
-from typing import List
-
 from seg_utils.ui.shape import Shape
 
+from typing import List
 from random import randint
+
 
 class Canvas(QWidget):
     r"""Base drawing widget as it should be instantiated and then connected to a scene
@@ -46,7 +46,8 @@ class Canvas(QWidget):
 
     def setTempLabel(self, points: List[QPointF] = None, shape_type: str = None):
         if points and shape_type:
-            self.temp_label = Shape(points=points,
+            self.temp_label = Shape(image_size=self.pixmap.size(),
+                                    points=points,
                                     shape_type=shape_type,
                                     color=self.drawNewColor)
         else:

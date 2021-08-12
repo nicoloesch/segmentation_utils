@@ -1,6 +1,6 @@
 import sys
 
-from PyQt5.QtCore import pyqtSignal, QPointF, QRectF, Qt
+from PyQt5.QtCore import pyqtSignal, QPointF, QRectF, Qt, QSize
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QListWidgetItem, QMessageBox, QMenu
 from PyQt5.QtGui import QPixmap, QIcon
 
@@ -17,8 +17,6 @@ from seg_utils.ui.dialogs import NewShapeDialog, ForgotToSaveMessageBox, DeleteS
 from seg_utils.config import VERTEX_SIZE
 
 import pathlib
-
-
 
 IMAGES_DIR = "images/"
 
@@ -44,6 +42,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.actions_dict = {}
         self.contextMenu = QMenu(self)
         self._selectedShape = -1
+        self.image_size = QSize()
 
         # color stuff
         self._num_colors = 25  # number of colors
@@ -199,14 +198,15 @@ class LabelMain(QMainWindow, LabelUI):
         if the image is changed"""
         labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
         self.current_labels = [Shape.from_dict(
-            Shape(), _label, color=self.getColorForLabel(_label['label']))
+            Shape(self.image_size), _label, color=self.getColorForLabel(_label['label']))
             for _label in labels]
         self.polyList.updateList(self.current_labels)
 
     def initImage(self):
         """Initializes the displayed image and respective label/canvas"""
-        self.initLabels()
         image = QPixmap(str(self.basedir / self.labeled_images[self.img_idx]))
+        self.image_size = image.size()
+        self.initLabels()
         self.imageDisplay.canvas.setPixmap(image)
         self.imageDisplay.canvas.setLabels(self.current_labels)
         self.fileList.setCurrentRow(self.img_idx)
@@ -356,6 +356,7 @@ class LabelMain(QMainWindow, LabelUI):
             self.imageDisplay.scene.setMode(self.CREATE)
             self.imageDisplay.scene.setShapeType(shape_type)
         else:
+            self.imageDisplay.canvas.setTempLabel()
             self.imageDisplay.scene.setMode(self.EDIT)
 
     def on_Drawing(self, points: List[QPointF], shape_type: str):
@@ -376,7 +377,8 @@ class LabelMain(QMainWindow, LabelUI):
             # traces are also polygons so i am going to store them as such
             if shape_type == 'trace':
                 shape_type = 'polygon'
-            shape = Shape(label=d.class_name, points=points,
+            shape = Shape(image_size=self.image_size,
+                          label=d.class_name, points=points,
                           color=self.getColorForLabel(d.class_name),
                           shape_type=shape_type)
             self.updateLabels(shape)
@@ -440,7 +442,7 @@ class LabelMain(QMainWindow, LabelUI):
         """
         sql_labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
         sql_labels = [Shape.from_dict
-                      (Shape(), _label, color=self.getColorForLabel(_label['label']))
+                      (Shape(self.image_size), _label, color=self.getColorForLabel(_label['label']))
                       for _label in sql_labels]
 
         if sql_labels == self.current_labels:

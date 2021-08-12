@@ -25,12 +25,12 @@ class ImageViewerScene(QGraphicsScene):
 
     def __init__(self, *args):
         super(ImageViewerScene, self).__init__(*args)
-        self.b_isInitialized = False
+        self.b_isInitialized = False  # boolean for if a pixmap is set and everything else is set up
         self.mode = self.EDIT
         self.shape_type = None
-        self.starting_point = QPointF()
-        self.last_point = QPointF()
-        self._startButtonPressed = False
+        self.starting_point = QPointF()  # point upon click
+        self.last_point = QPointF()  # necessary for moving the shapes as it stores the previous pos
+        self._startButtonPressed = False  # whether the left button was clicked
         self.poly_points = []  # list of points for the polygon drawing
         self.contextMenu = QMenu()
         self.b_contextMenuAvail = False
@@ -68,7 +68,7 @@ class ImageViewerScene(QGraphicsScene):
             if event.button() == Qt.MouseButton.LeftButton:
                 if self.isInDrawingMode():
                     self._startButtonPressed = True
-                    self.starting_point = event.scenePos()
+                    self.starting_point = self.checkOutOfBounds(event.scenePos())
                     if self.shape_type in ['polygon']:
                         if self.isOnBeginning(self.starting_point) and len(self.poly_points) > 1:
                             self.setClosedPath()
@@ -77,38 +77,45 @@ class ImageViewerScene(QGraphicsScene):
                             self.sig_Drawing.emit(self.poly_points, self.shape_type)
                 else:
                     self._startButtonPressed = True
-                    self.starting_point = event.scenePos()
+                    self.starting_point = self.checkOutOfBounds(event.scenePos())
                     self.last_point = self.starting_point
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
                     self.sig_ShapeSelected.emit(self.hShape, self.vShape, self.vNum)
 
             elif event.button() == Qt.MouseButton.RightButton:
+                # Context Menu
                 if not self.isInDrawingMode():
                     sel_shape = self.isShapeSelected()
                     self.sig_RequestContextMenu.emit(sel_shape, event.screenPos())
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
-        r"""Handle the event for moving the mouse. Currently only for selecting the shapes
-        whilst hovering over them"""
+        r"""Handle the event for moving the mouse"""
         if self.b_isInitialized:
             if self.isInDrawingMode():
                 if self.shape_type in ['polygon']:
-                    intermediate_points = self.poly_points + [event.scenePos()]
+                    # intermediate points are rendered but only as temporary shapes
+                    # this allows the clicking for new points which are then saved
+                    intermediate_points = self.poly_points + [self.checkOutOfBounds(event.scenePos())]
                     self.sig_Drawing.emit(intermediate_points, self.shape_type)
                 else:
                     if self._startButtonPressed:
                         if self.shape_type in ['trace']:
-                            self.poly_points.append(event.scenePos())
+                            self.poly_points.append(self.checkOutOfBounds(event.scenePos()))
                             self.sig_Drawing.emit(self.poly_points, self.shape_type)
                         elif self.shape_type in ['circle', 'rectangle']:
-                            self.sig_Drawing.emit([self.starting_point, event.scenePos()], self.shape_type)
+                            self.sig_Drawing.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())],
+                                                  self.shape_type)
             else:
+                # Here is the handling for the highlighting (if no start button is pressed)
+                # of shapes but also if one moves vertices or the entire shape
                 if self._startButtonPressed:
+                    # TODO: maybe change the ordering as then the move the vertex has prio compared to the move shape
+                    # this discriminates between whether one moves the entire shape of only a vertex
                     if self.hShape != -1:
-                        self.sig_MoveShape.emit(self.hShape, self.last_point - event.scenePos())
-                        self.last_point = event.scenePos()
+                        self.sig_MoveShape.emit(self.hShape, self.last_point - self.checkOutOfBounds(event.scenePos()))
+                        self.last_point = self.checkOutOfBounds(event.scenePos())
                     else:
-                        self.sig_MoveVertex.emit(self.vShape, self.vNum, event.scenePos())
+                        self.sig_MoveVertex.emit(self.vShape, self.vNum, self.checkOutOfBounds(event.scenePos()))
                 else:
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
                     self.sig_ShapeHovered.emit(self.hShape, self.vShape, self.vNum)
@@ -120,7 +127,7 @@ class ImageViewerScene(QGraphicsScene):
                     if self.shape_type in ['circle', 'rectangle']:
                         # this ends the drawing for the above shapes
                         self._startButtonPressed = False
-                        self.sig_DrawingDone.emit([self.starting_point, event.scenePos()], self.shape_type)
+                        self.sig_DrawingDone.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())], self.shape_type)
                         self.starting_point = QPointF()
                     elif self.shape_type in ['trace']:
                         self.setClosedPath()
@@ -173,3 +180,23 @@ class ImageViewerScene(QGraphicsScene):
             if _item.b_isSelected:
                 selectedShape = _item_idx
         return selectedShape
+
+    def checkOutOfBounds(self, scene_pos: QPointF) -> QPointF:
+        """Returns the corrected scene pos which is limited by the boundaries of the image"""
+        # TODO: probs very inefficient
+        pixmap_size = self.items()[0].widget().pixmap.size()
+        limited_scene_pos = QPointF()
+        if scene_pos.x() > pixmap_size.width():
+            limited_scene_pos.setX(pixmap_size.width())
+        elif scene_pos.x() < 0.0:
+            limited_scene_pos.setX(0.0)
+        else:
+            limited_scene_pos.setX(scene_pos.x())
+
+        if scene_pos.y() > pixmap_size.height():
+            limited_scene_pos.setY(pixmap_size.height())
+        elif scene_pos.y() < 0.0:
+            limited_scene_pos.setY(0.0)
+        else:
+            limited_scene_pos.setY(scene_pos.y())
+        return limited_scene_pos

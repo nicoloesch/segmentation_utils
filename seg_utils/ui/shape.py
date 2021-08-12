@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QGraphicsItem, QWidget, QStyleOptionGraphicsItem
+from PyQt5.QtWidgets import QGraphicsItem
 from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
-from PyQt5.QtCore import QPointF, Qt, QRectF, QRect, pyqtSignal
+from PyQt5.QtCore import QPointF, Qt, QRectF, QSize
 
 from copy import deepcopy
 from typing import Tuple, Union, List, Optional
@@ -12,6 +12,7 @@ from seg_utils.utils.qt import closestEuclideanDistance
 
 class Shape(QGraphicsItem):
     def __init__(self,
+                 image_size: QSize,
                  label: str = None,
                  points: List[QPointF] = [],
                  color: QColor = None,
@@ -19,6 +20,8 @@ class Shape(QGraphicsItem):
                  flags=None,
                  group_id=None):
         super(Shape, self).__init__()
+        self.image_size = image_size
+        self.image_rect = QRectF(0, 0, self.image_size.width(), self.image_size.height())
         self.label = label
         self.shape_type = shape_type
         self.vertex_size = VERTEX_SIZE
@@ -191,7 +194,7 @@ class Shape(QGraphicsItem):
 
     def move(self, displacement: QPointF) -> None:
         r"""Moves the shape by the given displacement"""
-        self.points = [_pt-displacement for _pt in self.points]
+        self.points = self.checkBoundaries(displacement)
         self.vertices.vertices = self.points
         if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
             self.initPath()
@@ -199,6 +202,21 @@ class Shape(QGraphicsItem):
 
         elif self.shape_type == "circle":
             self._bounding_rect = QRectF(self.points[0], self.points[2])
+
+    def checkBoundaries(self, displacement: QPointF) -> List[QPointF]:
+        """This founction checks whether the bounding rect of the current shape exceeds the image if the
+        displacement is applied. If so, no displacement is applied"""
+        new_br = deepcopy(self.boundingRect())
+        new_br.setTopLeft(new_br.topLeft()-displacement)
+        new_br.setTopRight(new_br.topRight()-displacement)
+        new_br.setBottomLeft(new_br.bottomLeft() - displacement)
+        new_br.setBottomRight(new_br.bottomRight() - displacement)
+        if self.image_rect.contains(new_br):
+            return [pt-displacement for pt in self.points]
+        else:
+            return self.points
+
+
 
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
