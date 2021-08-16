@@ -3,23 +3,28 @@ Segmentation Utility intended for segmenting medical images with ease. The appli
 [PyQT 5.15](https://doc.qt.io/qtforpython/ "PyQT documentation") 
 and contains two windows, where the user can pick from:
 
-1. `ui.segViewer` shows the segmentation annotations already made side by side with a notes field to
+1. `ui.selection_ui` shows the segmentation annotations already made side by side with a notes field to
 track changes and give alteration options
    
-2. `ui.segLabeler` (**EARLY ALPHA AND UNTESTED**) is an UI based on 
-   [labelme](https://github.com/wkentaro/labelme "Labelme Github") with 
-   reduced/altered functionality and altered appearance. It unifies the necessary functionality of labelme in a more 
-   readable version for better understanding and debugging. Additionally, it contains several bug fixes and UI
-   improvements to improve the workflow and efficiency of the tool 
-   
-## Functionality
-### To-Do
-- [ ] tight SQL integration
-- [ ] efficient labeling with polygon, circle and outline tracking
-- [ ] export options
-- [ ] adapted context menu
+2. `ui.label_ui` is a UI inspired by 
+   [labelme](https://github.com/wkentaro/labelme "Labelme Github") with improved functionality.
+This includes performance fixes, an altered structure and more readable code. Additionally, the drawing of shapes
+is refined as well as the saving. This includes saving into an SQL database.
 
-### Implemented
+Both files are called by their respective main function, which connects the UI elements with real functionality 
+(`src.label_main`, `src.viewer_main`). Alternatively, the `src.selection_main` can be called, which opens a dialog
+where one can pick between the aforementioned main GUI.
+
+## Functionality
+### Implemented Features
+- tight SQL integration
+- efficient labeling with polygon, rectangle, circle and outline tracking
+- adapted context menu
+
+### To-Do and requested features
+- export options for COCO/VOC Segmentation 
+- undo/redo buttons to revert to previous states
+
 ## Requirements
 - Ubuntu / macOS / Windows
 - Python3
@@ -48,9 +53,62 @@ conda activate <your_env_name>
 pip install --no-binary opencv-python opencv-python
 ```
 
+## Know Issues
+###Database
+Make sure, your database is composed similarly to the one specified in `utils.database` specified in the following in 
+shortened notation:
+```python
+# 'videos' table with the original (relative) video path, the (relative) path of the converted vide 
+# and the duration in ms of the video
+""" video_id INTEGER, origin_path TEXT, conv_path TEXT, duration"""
+
+
+# 'images' table with the (relative) video path of the extracted image, the (relative) path of the extracted image,
+# and the frame number of said image
+""" image_id INTEGER, video_path TEXT, image_path TEXT, frame_num INTEGER"""
+
+
+# 'labels' table with the (relative) image path, a binary object containing all labels as a list of dicts and N classes
+# of respective labels, i.e. class_tumour
+""" label_id INTEGER, image_path TEXT, label_list"""
+```
+
+### Folder Structure
+Make sure your folder structure is the following:
+```bash
+.
+├── converted
+│   ├── video_0001.mp4
+│   │         .
+│   │         .
+│   │         .
+│   ├── video_XXXX.mp4
+├── images
+│   ├── video_0001_0001.png
+│   │         .
+│   │         .
+│   │         .
+│   ├── video_XXXX_XXXX.png
+├── labels
+│   ├── class_names.txt
+│   ├── PNGImages
+│   │   ├── video0001_0001.png
+│   │   │       .
+│   │   │       .
+│   │   │       . 
+│   │   ├── video_XXXX_XXXX.png
+│   ├── SegmentationClassVisualization
+│   │   ├── video0001_0001.png
+│   │   │       .
+│   │   │       .
+│   │   │       . 
+│   │   ├── video_XXXX_XXXX.png
+```
+
+
 
 ## Development
-## Building standalone application
+### Building standalone application
 ```bash
 # navigate to the base folder seg_utils containing setup.py
 pip install .
@@ -72,4 +130,4 @@ pyrcc5 <Resource_File>.qrc -o <Resource_File>_rc.py
 
 ## Acknowledgement
 
-This repo is an alteration of [labelme](https://github.com/wkentaro/labelme "Labelme Github")
+This repo is inspired by [labelme](https://github.com/wkentaro/labelme "Labelme Github").
