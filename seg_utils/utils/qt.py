@@ -12,38 +12,6 @@ from typing import List, Tuple, Union
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
-
-class Label(object):
-    def __init__(
-            self,
-            label=None,
-            shape_type=None,
-            points=None,
-            flags=None,
-            group_id=None,
-    ):
-        self.label = label
-        self.group_id = group_id
-        self.points = points
-        self.shape_type = shape_type
-        self.flags = flags
-
-    def __repr__(self):
-        return f"Label Struct({self.label}, {self.shape_type})"
-
-    def from_dict(self, item: dict):
-        if 'label' in item:
-            self.label = item['label']
-        if 'shape_type' in item:
-            self.shape_type = item['shape_type']
-        if 'points' in item:
-            self.points = item['points']
-        if 'flags' in item:
-            self.flags = item['flags']
-        if 'group_id' in item:
-            self.group_id = item['group_id']
-
-
 def hsv2rgb(h,s,v):
     """Maps the value of colorsys to [0 255]"""
     return tuple(round(i * 255) for i in colorsys.hsv_to_rgb(h,s,v))

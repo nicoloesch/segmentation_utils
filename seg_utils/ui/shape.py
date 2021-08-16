@@ -18,7 +18,8 @@ class Shape(QGraphicsItem):
                  color: QColor = None,
                  shape_type: str = None,
                  flags=None,
-                 group_id=None):
+                 group_id=None,
+                 label_dict: Optional[dict] = None):
         super(Shape, self).__init__()
         self.image_size = image_size
         self.image_rect = QRectF(0, 0, self.image_size.width(), self.image_size.height())
@@ -28,6 +29,17 @@ class Shape(QGraphicsItem):
         self.points = points
         self.flags = flags
         self.group_id = group_id
+        if label_dict:
+            if 'label' in label_dict:
+                self.label = label_dict['label']
+            if 'points' in label_dict:
+                self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
+            if 'shape_type' in label_dict:
+                self.shape_type = label_dict['shape_type']
+            if 'flags' in label_dict:
+                self.flags = label_dict['flags']
+            if 'group_id' in label_dict:
+                self.group_id = label_dict['group_id']
         self.line_color, self.brush_color = None, None
         self.initColor(color)
         self.selected_color = Qt.GlobalColor.white
@@ -37,9 +49,9 @@ class Shape(QGraphicsItem):
         self._anchorPoint = None
 
         # distinction between highlighted (hovering over it) and selecting it (click)
-        self.b_isHighlighted = False
-        self.b_isClosedPath = False
-        self.b_isSelected = False
+        self._isHighlighted = False
+        self._isClosedPath = False
+        self._isSelected = False
         self.initShape()
 
     def __repr__(self):
@@ -51,29 +63,43 @@ class Shape(QGraphicsItem):
         else:
             return False
 
+    @property
+    def isHighlighted(self) -> bool:
+        return self._isHighlighted
+
+    @isHighlighted.setter
+    def isHighlighted(self, value: bool):
+        self._isHighlighted = value
+
+    @property
+    def isSelected(self) -> bool:
+        return self._isSelected
+
+    @isSelected.setter
+    def isSelected(self, value: bool):
+        self._isSelected = value
+
+    @property
+    def isClosedPath(self) -> bool:
+        return self._isClosedPath
+
+    @isClosedPath.setter
+    def isClosedPath(self, value: bool):
+        self._isClosedPath = value
+
     def boundingRect(self) -> QRectF:
         return self._bounding_rect
 
-    def from_dict(self, label_dict: dict, color: QColor):
-        r"""Method to create a Shape from a dict, which is stored in the SQL database"""
-        if 'label' in label_dict:
-            self.label = label_dict['label']
-        if 'points' in label_dict:
-            self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
-        if 'shape_type' in label_dict:
-            self.shape_type = label_dict['shape_type']
-        if 'flags' in label_dict:
-            self.flags = label_dict['flags']
-        if 'group_id' in label_dict:
-            self.group_id = label_dict['group_id']
-
-        self.initColor(color)
-        self.initShape()
-        return self
-
-    def to_dict(self):
-        r"""Method to store the current shape in the SQL Database"""
-        pass
+    def to_dict(self) -> Tuple[dict, str]:
+        r"""Returns a dict and a string from a shape item as those can be easier serialized
+        with pickle compared to own classes"""
+        # TODO: maybe json serialization? Or look into how one can pickle own classes and depickle them
+        dict = {'label': self.label,
+                'points': [[_pt.x(), _pt.y()] for _pt in self.points],
+                'shape_type': self.shape_type,
+                'flags': self.flags,
+                'group_id': self.group_id}
+        return dict, self.label
 
     def initShape(self):
         if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', 'trace', None]:
@@ -81,6 +107,7 @@ class Shape(QGraphicsItem):
         # Add additional points
         if self.shape_type in ['rectangle', 'circle'] and len(self.points) == 2:
             self.getCorners()
+
         if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
             self.initPath()
             self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
@@ -124,7 +151,7 @@ class Shape(QGraphicsItem):
             if self.path.elementAt(vNum):
                 self.path.setElementPositionAt(vNum, newPos.x(), newPos.y())
                 self.points[vNum] = newPos
-                self.vertices.vertices[vNum] = newPos
+                self.vertices.points[vNum] = newPos
         elif self.shape_type in ['rectangle', 'circle']:
             if not self._anchorPoint:
                 # this point is the anchor a.k.a the point diagonally from the selected one
@@ -136,22 +163,22 @@ class Shape(QGraphicsItem):
             if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
                 self.initPath()
                 # reset the selected vertex as the ordering within the bounding rectangle changes
-                self.vertices.vertices = self.points
+                self.vertices.points = self.points
                 self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
                 self._bounding_rect = self.path.boundingRect()
 
             elif self.shape_type == "circle":
-                self.vertices.vertices = self.points
+                self.vertices.points = self.points
                 self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
                 self._bounding_rect = QRectF(self.points[0], self.points[2])
 
     def paint(self, painter: QPainter) -> None:
         if len(self.points) > 0:
-            if not self.b_isSelected:
+            if not self.isSelected:
                 painter.setPen(QPen(self.line_color, 1))  # TODO: pen width depending on the image size
             else:
                 painter.setPen(QPen(self.selected_color, 1))
-            if self.b_isHighlighted or self.b_isSelected:
+            if self.isHighlighted or self.isSelected:
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
@@ -160,7 +187,7 @@ class Shape(QGraphicsItem):
                 self.vertices.paint(painter)
             elif self.shape_type == "circle":
                 painter.drawEllipse(QRectF(self.points[0], self.points[2]))
-                if self.b_isSelected or self.b_isHighlighted or self.vertices.selectedVertex != -1:
+                if self.isSelected or self.isHighlighted or self.vertices.selectedVertex != -1:
                     self.vertices.paint(painter)
 
     def setScaling(self, zoom: int, max_size: int):
@@ -195,7 +222,7 @@ class Shape(QGraphicsItem):
     def move(self, displacement: QPointF) -> None:
         r"""Moves the shape by the given displacement"""
         self.points = self.checkBoundaries(displacement)
-        self.vertices.vertices = self.points
+        self.vertices.points = self.points
         if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
             self.initPath()
             self._bounding_rect = self.path.boundingRect()
@@ -216,8 +243,6 @@ class Shape(QGraphicsItem):
         else:
             return self.points
 
-
-
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
         return [QPointF(*_pt) for _pt in point_list]
@@ -234,7 +259,7 @@ class Shape(QGraphicsItem):
 
 class VertexCollection(object):
     def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
-        self.vertices = points
+        self.points = points
         self.line_color = line_color
         self.brush_color = brush_color
         self.highlight_color = Qt.GlobalColor.white
@@ -245,7 +270,7 @@ class VertexCollection(object):
         self._scaling = SCALING_INITIAL
 
     def paint(self, painter: QPainter):
-        for _idx, _vertex in enumerate(self.vertices):
+        for _idx, _vertex in enumerate(self.points):
             qtpoint = _vertex
             painter.setPen(QPen(self.line_color, 0.5))  # TODO: width dependent on the size of the image or something
             painter.setBrush(QBrush(self.brush_color))
@@ -266,12 +291,12 @@ class VertexCollection(object):
     def closestVertex(self, point: np.ndarray) -> int:
         """Calculate the euclidean distance between a point and all vertices and return the index of
         the closest node to the point"""
-        return closestEuclideanDistance(point, self.ListQPointF_to_Numpy(self.vertices))
+        return closestEuclideanDistance(point, self.ListQPointF_to_Numpy(self.points))
 
     def isOnVertex(self, point: QPointF) -> Tuple[bool, int]:
         """Check if a point is within the closest vertex rectangle"""
         closestVertex = self.closestVertex(np.asarray([point.x(), point.y()]))
-        vertexCenter = self.vertices[closestVertex]
+        vertexCenter = self.points[closestVertex]
         if closestVertex in [self.highlightedVertex, self.selectedVertex]:
             size = (self.vertex_size * self._scaling) / 2
         else:

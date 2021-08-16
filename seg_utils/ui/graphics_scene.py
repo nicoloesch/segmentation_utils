@@ -6,20 +6,20 @@ from seg_utils.config import VERTEX_SIZE
 from seg_utils.src.actions import Action
 
 from typing import Tuple
-from numpy import argmax
+import numpy as np
 
 
 class ImageViewerScene(QGraphicsScene):
-    sig_ShapeHovered = pyqtSignal(int, int, int)
-    sig_ShapeSelected = pyqtSignal(int, int, int)
+    sShapeHovered = pyqtSignal(int, int, int)
+    sShapeSelected = pyqtSignal(int, int, int)
 
-    sig_RequestContextMenu = pyqtSignal(int, QPoint)
-    sig_RequestAnchorReset = pyqtSignal(int)
+    sRequestContextMenu = pyqtSignal(int, QPoint)
+    sRequestAnchorReset = pyqtSignal(int)
 
-    sig_Drawing = pyqtSignal(list, str)
-    sig_DrawingDone = pyqtSignal(list, str)
-    sig_MoveVertex = pyqtSignal(int, int, QPointF)
-    sig_MoveShape = pyqtSignal(int, QPointF)
+    sDrawing = pyqtSignal(list, str)
+    sDrawingDone = pyqtSignal(list, str)
+    sMoveVertex = pyqtSignal(int, int, QPointF)
+    sMoveShape = pyqtSignal(int, QPointF)
 
     CREATE, EDIT = 0, 1
 
@@ -57,7 +57,7 @@ class ImageViewerScene(QGraphicsScene):
 
     def setClosedPath(self):
         self._startButtonPressed = False
-        self.sig_DrawingDone.emit(self.poly_points, self.shape_type)
+        self.sDrawingDone.emit(self.poly_points, self.shape_type)
         self.poly_points = []
         self.starting_point = QPointF()
 
@@ -74,19 +74,19 @@ class ImageViewerScene(QGraphicsScene):
                             self.setClosedPath()
                         else:
                             self.poly_points.append(self.starting_point)
-                            self.sig_Drawing.emit(self.poly_points, self.shape_type)
+                            self.sDrawing.emit(self.poly_points, self.shape_type)
                 else:
                     self._startButtonPressed = True
                     self.starting_point = self.checkOutOfBounds(event.scenePos())
                     self.last_point = self.starting_point
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
-                    self.sig_ShapeSelected.emit(self.hShape, self.vShape, self.vNum)
+                    self.sShapeSelected.emit(self.hShape, self.vShape, self.vNum)
 
             elif event.button() == Qt.MouseButton.RightButton:
                 # Context Menu
                 if not self.isInDrawingMode():
                     sel_shape = self.isShapeSelected()
-                    self.sig_RequestContextMenu.emit(sel_shape, event.screenPos())
+                    self.sRequestContextMenu.emit(sel_shape, event.screenPos())
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         r"""Handle the event for moving the mouse"""
@@ -96,14 +96,14 @@ class ImageViewerScene(QGraphicsScene):
                     # intermediate points are rendered but only as temporary shapes
                     # this allows the clicking for new points which are then saved
                     intermediate_points = self.poly_points + [self.checkOutOfBounds(event.scenePos())]
-                    self.sig_Drawing.emit(intermediate_points, self.shape_type)
+                    self.sDrawing.emit(intermediate_points, self.shape_type)
                 else:
                     if self._startButtonPressed:
                         if self.shape_type in ['trace']:
                             self.poly_points.append(self.checkOutOfBounds(event.scenePos()))
-                            self.sig_Drawing.emit(self.poly_points, self.shape_type)
+                            self.sDrawing.emit(self.poly_points, self.shape_type)
                         elif self.shape_type in ['circle', 'rectangle']:
-                            self.sig_Drawing.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())],
+                            self.sDrawing.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())],
                                                   self.shape_type)
             else:
                 # Here is the handling for the highlighting (if no start button is pressed)
@@ -112,13 +112,13 @@ class ImageViewerScene(QGraphicsScene):
                     # TODO: maybe change the ordering as then the move the vertex has prio compared to the move shape
                     # this discriminates between whether one moves the entire shape of only a vertex
                     if self.hShape != -1:
-                        self.sig_MoveShape.emit(self.hShape, self.last_point - self.checkOutOfBounds(event.scenePos()))
+                        self.sMoveShape.emit(self.hShape, self.last_point - self.checkOutOfBounds(event.scenePos()))
                         self.last_point = self.checkOutOfBounds(event.scenePos())
                     else:
-                        self.sig_MoveVertex.emit(self.vShape, self.vNum, self.checkOutOfBounds(event.scenePos()))
+                        self.sMoveVertex.emit(self.vShape, self.vNum, self.checkOutOfBounds(event.scenePos()))
                 else:
                     self.hShape, self.vShape, self.vNum = self.isMouseOnShape(event)
-                    self.sig_ShapeHovered.emit(self.hShape, self.vShape, self.vNum)
+                    self.sShapeHovered.emit(self.hShape, self.vShape, self.vNum)
 
     def mouseReleaseEvent(self, event) -> None:
         if self.b_isInitialized:
@@ -127,12 +127,12 @@ class ImageViewerScene(QGraphicsScene):
                     if self.shape_type in ['circle', 'rectangle']:
                         # this ends the drawing for the above shapes
                         self._startButtonPressed = False
-                        self.sig_DrawingDone.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())], self.shape_type)
+                        self.sDrawingDone.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())], self.shape_type)
                         self.starting_point = QPointF()
                     elif self.shape_type in ['trace']:
                         self.setClosedPath()
                 else:
-                    self.sig_RequestAnchorReset.emit(self.vShape)
+                    self.sRequestAnchorReset.emit(self.vShape)
                     self._startButtonPressed = False
 
     def isMouseOnShape(self, event: QGraphicsSceneMouseEvent) -> Tuple[int, int, int]:
@@ -154,7 +154,7 @@ class ImageViewerScene(QGraphicsScene):
             closestVertex.append(_cVert)
         # check if any of them are True, i.e. the vertex is highlighted
         if any(isOnVertex):
-            return selected_shape, int(argmax(isOnVertex)), closestVertex[argmax(isOnVertex)]
+            return selected_shape, int(np.argmax(isOnVertex)), closestVertex[np.argmax(isOnVertex)]
         else:
             return selected_shape, -1, -1
 
@@ -177,26 +177,13 @@ class ImageViewerScene(QGraphicsScene):
         r"""Check if shape is highlighted which enables the context menu"""
         selectedShape = -1
         for _item_idx, _item in enumerate(self.items()[0].widget().labels):
-            if _item.b_isSelected:
+            if _item.isSelected:
                 selectedShape = _item_idx
         return selectedShape
 
     def checkOutOfBounds(self, scene_pos: QPointF) -> QPointF:
         """Returns the corrected scene pos which is limited by the boundaries of the image"""
-        # TODO: probs very inefficient
         pixmap_size = self.items()[0].widget().pixmap.size()
-        limited_scene_pos = QPointF()
-        if scene_pos.x() > pixmap_size.width():
-            limited_scene_pos.setX(pixmap_size.width())
-        elif scene_pos.x() < 0.0:
-            limited_scene_pos.setX(0.0)
-        else:
-            limited_scene_pos.setX(scene_pos.x())
-
-        if scene_pos.y() > pixmap_size.height():
-            limited_scene_pos.setY(pixmap_size.height())
-        elif scene_pos.y() < 0.0:
-            limited_scene_pos.setY(0.0)
-        else:
-            limited_scene_pos.setY(scene_pos.y())
-        return limited_scene_pos
+        pixmap_size = np.array((pixmap_size.width(), pixmap_size.height()))
+        scene_pos = np.clip(np.array((scene_pos.x(), scene_pos.y())), np.array((0, 0)), pixmap_size)
+        return QPointF(scene_pos[0], scene_pos[1])

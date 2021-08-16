@@ -7,7 +7,7 @@ from seg_utils.utils.qt import createListWidgetItemWithSquareIcon
 from typing import List, Union
 
 class ListWidget(QListWidget):
-    sig_RequestContextMenu = pyqtSignal(int, QPoint)
+    sRequestContextMenu = pyqtSignal(int, QPoint)
 
     def __init__(self, *args):
         super(ListWidget, self).__init__(*args)
@@ -25,5 +25,5 @@ class ListWidget(QListWidget):
     def contextMenuEvent(self, event) -> None:
         pos = event.pos()
         idx = self.row(self.itemAt(pos))
-        self.sig_RequestContextMenu.emit(idx, self.mapToGlobal(pos))
+        self.sRequestContextMenu.emit(idx, self.mapToGlobal(pos))
 

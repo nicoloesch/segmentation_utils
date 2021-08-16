@@ -13,8 +13,8 @@ class Canvas(QWidget):
     r"""Base drawing widget as it should be instantiated and then connected to a scene
      https://forum.qt.io/topic/93327/how-can-i-use-qpainter-to-paint-on-qgraphicsview/3
      """
-    sig_RequestFitInView = pyqtSignal(QRectF)
-    sig_RequestLabelListUpdate = pyqtSignal(int)
+    sRequestFitInView = pyqtSignal(QRectF)
+    sRequestLabelListUpdate = pyqtSignal(int)
 
     CREATE, EDIT = 0, 1
 
@@ -33,7 +33,7 @@ class Canvas(QWidget):
         to the Scene and the image_viewer will display the scene respectively a view into the scene"""
         self.pixmap = pixmap
         self.resize(self.pixmap.size())
-        self.sig_RequestFitInView.emit(QRectF(self.pixmap.rect()))
+        self.sRequestFitInView.emit(QRectF(self.pixmap.rect()))
 
     def setLabels(self, labels: List[Shape]):
         """Set the labels which are drawn on the canvas"""
@@ -57,17 +57,17 @@ class Canvas(QWidget):
 
     def handleShapeHovered(self,  shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
         """Handles both shape and vertex highlighting in one call as I then only have to update it once"""
-        self.resetHighlight()
+        self.labels = list(map(self.resetHighlight, self.labels))
         if shape_idx > -1:
-            self.labels[shape_idx].b_isHighlighted = True
+            self.labels[shape_idx].isHighlighted = True
         self.handleVertexHighlighted(closest_vertex_shape, vertex_idx)
         self.update()
 
     def handleShapeSelected(self, shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
-        self.resetSelection()
+        self.labels = list(map(self.resetSelection, self.labels))
         if shape_idx != -1:
-            self.labels[shape_idx].b_isSelected = True
-            self.sig_RequestLabelListUpdate.emit(shape_idx)
+            self.labels[shape_idx].isSelected = True
+            self.sRequestLabelListUpdate.emit(shape_idx)
         self.handleVertexSelected(closest_vertex_shape, vertex_idx)
         self.update()
 
@@ -79,15 +79,18 @@ class Canvas(QWidget):
         if vertex_idx != -1:
             self.labels[shape_idx].vertices.selectedVertex = vertex_idx
 
-    def resetHighlight(self):
-        for label in self.labels:
-            label.b_isHighlighted = False
-            label.vertices.highlightedVertex = -1
+    @staticmethod
+    def resetHighlight(label: Shape):
+        r"""Resets the highlighting attribute"""
+        label.isHighlighted = False
+        label.vertices.highlightedVertex = -1
+        return label
 
-    def resetSelection(self):
-        for label in self.labels:
-            label.b_isSelected = False
-            label.vertices.selectedVertex = -1
+    @staticmethod
+    def resetSelection(label: Shape):
+        label.isSelected = False
+        label.vertices.selectedVertex = -1
+        return label
 
     def paintEvent(self, event) -> None:
         if not self.pixmap:

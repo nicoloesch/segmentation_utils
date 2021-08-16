@@ -14,7 +14,7 @@ from seg_utils.ui.canvas import Canvas
 
 class ImageViewer(QGraphicsView):
 
-    sig_ZoomLevelChanged = pyqtSignal(int)
+    sZoomLevelChanged = pyqtSignal(int)
     def __init__(self, *args):
         super(ImageViewer, self).__init__(*args)
         self.canvas = Canvas()
@@ -75,7 +75,7 @@ class ImageViewer(QGraphicsView):
                     self.fitInView(QRectF(self.canvas.rect()))
                 else:
                     self._zoom = 1
-            self.sig_ZoomLevelChanged.emit(self._zoom)
+            self.sZoomLevelChanged.emit(self._zoom)
 
     def keyPressEvent(self, event) -> None:
         if not self.b_isEmpty:

@@ -22,7 +22,7 @@ IMAGES_DIR = "images/"
 
 
 class LabelMain(QMainWindow, LabelUI):
-    sig_LabelSelected = pyqtSignal(int, int, int)
+    sLabelSelected = pyqtSignal(int, int, int)
     CREATE, EDIT = 0, 1
 
     def __init__(self):
@@ -136,25 +136,25 @@ class LabelMain(QMainWindow, LabelUI):
         self.fileList.itemClicked.connect(self.handleFileListItemClicked)
         self.fileSearch.textChanged.connect(self.handleFileListSearch)
         self.polyList.itemClicked.connect(self.handlePolyListSelection)
-        self.imageDisplay.canvas.sig_RequestLabelListUpdate.connect(self.handleUpdatePolyList)
-        self.imageDisplay.canvas.sig_RequestFitInView.connect(self.imageDisplay.fitInView)
-        self.imageDisplay.scene.sig_ShapeHovered.connect(self.imageDisplay.canvas.handleShapeHovered)
-        self.imageDisplay.scene.sig_ShapeSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
-        self.sig_LabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
-        self.imageDisplay.sig_ZoomLevelChanged.connect(self.on_zoomLevelChanged)
+        self.imageDisplay.canvas.sRequestLabelListUpdate.connect(self.handleUpdatePolyList)
+        self.imageDisplay.canvas.sRequestFitInView.connect(self.imageDisplay.fitInView)
+        self.imageDisplay.scene.sShapeHovered.connect(self.imageDisplay.canvas.handleShapeHovered)
+        self.imageDisplay.scene.sShapeSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
+        self.sLabelSelected.connect(self.imageDisplay.canvas.handleShapeSelected)
+        self.imageDisplay.sZoomLevelChanged.connect(self.on_zoomLevelChanged)
 
         # ContextMenu
-        self.imageDisplay.scene.sig_RequestContextMenu.connect(self.on_requestContextMenu)
-        self.polyList.sig_RequestContextMenu.connect(self.on_requestContextMenu)
+        self.imageDisplay.scene.sRequestContextMenu.connect(self.on_requestContextMenu)
+        self.polyList.sRequestContextMenu.connect(self.on_requestContextMenu)
 
         # Drawing Events
-        self.imageDisplay.scene.sig_Drawing.connect(self.on_Drawing)
-        self.imageDisplay.scene.sig_DrawingDone.connect(self.on_drawEnd)
+        self.imageDisplay.scene.sDrawing.connect(self.on_Drawing)
+        self.imageDisplay.scene.sDrawingDone.connect(self.on_drawEnd)
 
         # Altering Shape Events
-        self.imageDisplay.scene.sig_MoveVertex.connect(self.on_moveVertex)
-        self.imageDisplay.scene.sig_MoveShape.connect(self.on_moveShape)
-        self.imageDisplay.scene.sig_RequestAnchorReset.connect(self.on_anchorRest)
+        self.imageDisplay.scene.sMoveVertex.connect(self.on_moveVertex)
+        self.imageDisplay.scene.sMoveShape.connect(self.on_moveShape)
+        self.imageDisplay.scene.sRequestAnchorReset.connect(self.on_anchorRest)
 
     def initWithDatabase(self, database: str):
         """This function is called if a correct database is selected"""
@@ -197,9 +197,9 @@ class LabelMain(QMainWindow, LabelUI):
         r"""This function initializes the labels for the current image. Necessary to have only one call to the database
         if the image is changed"""
         labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
-        self.current_labels = [Shape.from_dict(
-            Shape(self.image_size), _label, color=self.getColorForLabel(_label['label']))
-            for _label in labels]
+        self.current_labels = [Shape(image_size=self.image_size, label_dict=_label,
+                                     color=self.getColorForLabel(_label['label']))
+                               for _label in labels]
         self.polyList.updateList(self.current_labels)
 
     def initImage(self):
@@ -243,7 +243,7 @@ class LabelMain(QMainWindow, LabelUI):
 
     def handlePolyListSelection(self, item):
         r"""Returns the row index within the list such that the plotter in canvas can update it"""
-        self.sig_LabelSelected.emit(self.polyList.row(item), self.polyList.row(item), -1)
+        self.sLabelSelected.emit(self.polyList.row(item), self.polyList.row(item), -1)
 
     def getColorForLabel(self, label_name: str):
         r"""Get a Color based on a label_name"""
@@ -316,7 +316,7 @@ class LabelMain(QMainWindow, LabelUI):
         label_list = []
         classes_set = set()
         for _lbl in self.current_labels:
-            label_dict, class_name = self.ShapeToDict(_lbl)
+            label_dict, class_name = _lbl.to_dict()
             label_list.append(label_dict)
             classes_set.add(class_name)
         classes_dict = {_key: 0 for _key in self.classes.keys()}  # initialize the final dict
@@ -385,12 +385,9 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
 
     def on_requestContextMenu(self, shape_idx, contextmenu_pos):
-        """This opens the context menu. Most likely can also be called either in
-        image_viewer or graphics_scene by overriding the contextMenuEvent. However, I need the
-        shape_idx and I dont want to have twice the same call to get one number hence i send it with a
-        signal from the graphics scene to here"""
+        """This opens the context menu"""
         self._selectedShape = shape_idx
-        if shape_idx != -1 and self.current_labels[shape_idx].b_isSelected:
+        if shape_idx != -1 and self.current_labels[shape_idx].isSelected:
             for action in self.contextMenu.actions():
                 action.setEnabled(True)
         else:
@@ -441,8 +438,7 @@ class LabelMain(QMainWindow, LabelUI):
             :returns: 0 if accepted or no changes, 1 if cancelled and 2 if dimissed
         """
         sql_labels = self.database.get_label_from_imagepath(self.labeled_images[self.img_idx])
-        sql_labels = [Shape.from_dict
-                      (Shape(self.image_size), _label, color=self.getColorForLabel(_label['label']))
+        sql_labels = [Shape(image_size=self.image_size, label_dict=_label, color=self.getColorForLabel(_label['label']))
                       for _label in sql_labels]
 
         if sql_labels == self.current_labels:
@@ -451,15 +447,3 @@ class LabelMain(QMainWindow, LabelUI):
             d = ForgotToSaveMessageBox(self)
             d.exec()
             return d.result()
-
-    @staticmethod
-    def ShapeToDict(shape: Shape) -> Tuple[dict, str]:
-        r"""Returns a dict and a string from a shape item as those can be easier serialized
-        with pickle compared to own classes"""
-        # TODO: maybe json serialization? Or look into how one can pickle own classes and depickle them
-        dict = {'label': shape.label,
-                'points': [[_pt.x(), _pt.y()] for _pt in shape.points],
-                'shape_type': shape.shape_type,
-                'flags': shape.flags,
-                'group_id': shape.group_id}
-        return dict, shape.label
