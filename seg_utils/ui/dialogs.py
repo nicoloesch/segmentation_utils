@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import (QDialog, QPushButton, QWidget, QLabel,
                              QVBoxLayout, QTextEdit, QHBoxLayout, QDialogButtonBox,
                              QStyle, QMessageBox)
-from PyQt5.QtCore import QSize, QPoint
-from PyQt5.QtGui import QFont, QTextCursor
+from PyQt5.QtCore import QSize, QPoint, Qt
+from PyQt5.QtGui import QFont
 
 from seg_utils.ui.list_widget import ListWidget
 from seg_utils.utils.qt import createListWidgetItemWithSquareIcon, getIcon
@@ -32,6 +32,7 @@ class NewShapeDialog(QDialog):
         self.shapeText.setFont(font)
         self.shapeText.setPlaceholderText("Enter shape label")
         self.shapeText.setMaximumHeight(25)
+        self.shapeText.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
         # Buttons
         buttonWidget = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -54,6 +55,7 @@ class NewShapeDialog(QDialog):
 
     def on_ListSelection(self, item):
         self.class_name = item.text()
+        self.setText(item.text())
 
     def on_ButtonClicked(self):
         self.close()

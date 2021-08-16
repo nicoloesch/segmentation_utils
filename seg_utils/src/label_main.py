@@ -23,6 +23,7 @@ IMAGES_DIR = "images/"
 
 class LabelMain(QMainWindow, LabelUI):
     sLabelSelected = pyqtSignal(int, int, int)
+    sResetSelAndHigh = pyqtSignal()
     CREATE, EDIT = 0, 1
 
     def __init__(self):
@@ -85,13 +86,13 @@ class LabelMain(QMainWindow, LabelUI):
                                  "Go to previous image")
         actionDrawPoly = Action(self,
                                 "Draw\nPolygon",
-                                lambda: self.on_drawStart('polygon'),
+                                lambda: self.on_drawStart('tempPolygon'),
                                 icon="polygon",
                                 tip="Draw Polygon (right click to show options)",
                                 checkable=True)
         actionTraceOutline = Action(self,
                                     "Draw\nTrace",
-                                    lambda: self.on_drawStart('trace'),
+                                    lambda: self.on_drawStart('tempTrace'),
                                     icon="outline",
                                     tip="Trace Outline",
                                     checkable=True)
@@ -152,6 +153,7 @@ class LabelMain(QMainWindow, LabelUI):
         self.imageDisplay.scene.sDrawingDone.connect(self.on_drawEnd)
 
         # Altering Shape Events
+        self.sResetSelAndHigh.connect(self.imageDisplay.canvas.on_ResetSelAndHigh)
         self.imageDisplay.scene.sMoveVertex.connect(self.on_moveVertex)
         self.imageDisplay.scene.sMoveShape.connect(self.on_moveShape)
         self.imageDisplay.scene.sRequestAnchorReset.connect(self.on_anchorRest)
@@ -348,10 +350,9 @@ class LabelMain(QMainWindow, LabelUI):
 
     def on_drawStart(self, shape_type: str):
         r"""Function to enable the drawing but also uncheck all other buttons"""
-        action = self.toolBar.getWidgetForAction(f'Draw{shape_type.capitalize()}')
+        action = self.toolBar.getWidgetForAction(f'Draw{shape_type.replace("temp", "").capitalize()}')
         self.setOtherButtonsUnchecked(action)
-        self.imageDisplay.canvas.resetHighlight()
-        self.imageDisplay.canvas.resetSelection()
+        self.sResetSelAndHigh.emit()
         if action.isChecked():
             self.imageDisplay.scene.setMode(self.CREATE)
             self.imageDisplay.scene.setShapeType(shape_type)
@@ -361,13 +362,9 @@ class LabelMain(QMainWindow, LabelUI):
 
     def on_Drawing(self, points: List[QPointF], shape_type: str):
         r"""Function to handle the drawing event"""
-        action = f'Draw{shape_type.capitalize()}'
+        action = f'Draw{shape_type.replace("temp", "").capitalize()}'
         if self.toolBar.getWidgetForAction(action).isChecked():
             if points:
-                # change intermediate stuff to lines so i can keep it seperate from a polygon which has
-                # a closed path
-                if shape_type == 'polygon':
-                    shape_type = 'lines'
                 self.imageDisplay.canvas.setTempLabel(points, shape_type)
 
     def on_drawEnd(self, points: List[QPointF], shape_type: str):
@@ -375,14 +372,14 @@ class LabelMain(QMainWindow, LabelUI):
         d.exec()
         if d.class_name:
             # traces are also polygons so i am going to store them as such
-            if shape_type == 'trace':
+            if shape_type in ['tempTrace', "tempPolygon"]:
                 shape_type = 'polygon'
             shape = Shape(image_size=self.image_size,
                           label=d.class_name, points=points,
                           color=self.getColorForLabel(d.class_name),
                           shape_type=shape_type)
             self.updateLabels(shape)
-        self.imageDisplay.canvas.setTempLabel()  # reset the temporary label
+        self.imageDisplay.canvas.setTempLabel()
 
     def on_requestContextMenu(self, shape_idx, contextmenu_pos):
         """This opens the context menu"""
@@ -416,11 +413,11 @@ class LabelMain(QMainWindow, LabelUI):
     def on_moveVertex(self, vShape: int, vNum: int, newPos: QPointF):
         if vShape != -1:
             if self.current_labels[vShape].vertices.selectedVertex != -1:
-                self.current_labels[vShape].updateShape(vNum, newPos)
+                self.current_labels[vShape].moveVertex(vNum, newPos)
                 self.imageDisplay.canvas.setLabels(self.current_labels)
 
     def on_moveShape(self, hShape: int, displacement: QPointF):
-        self.current_labels[hShape].move(displacement)
+        self.current_labels[hShape].moveShape(displacement)
         self.imageDisplay.canvas.setLabels(self.current_labels)
 
     def on_anchorRest(self, vShape: int):

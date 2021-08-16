@@ -2,21 +2,31 @@
 from typing import Optional
 import numpy as np
 import pickle
-from PyQt5.QtCore import QSize, QPointF
+from typing import List
+from PyQt5.QtCore import QSize, QPointF, QRectF
+from PyQt5.QtGui import QPolygonF, QVector2D
+
 import time
 
 
-class Test:
-    def __init__(self):
-        self._val = 0
+class Test(object):
+    def __init__(self, points: List[QPointF]):
+        # i am going to save them as a polygon as it is a representation of a vector and i can access it like a matrix
+        self._points = QPolygonF(points)
+        self.dummy = 0
 
-    @property
-    def val(self):
-        return self._val
+    def __getitem__(self, item):
+        if not isinstance(item, tuple):
+            item = tuple((item,))
+            # TODO: could be accelerated but most likely doesn't matter
+        ret = tuple([self._points[_pt] for _pt in item])
+        if len(ret) == 1:
+            return ret[0]
+        else:
+            return ret
 
-    @val.setter
-    def val(self, value):
-        self._val = value
+    def __len__(self):
+        return len(self._points)
 
 
 def qt_method(points, displacement):
@@ -37,13 +47,21 @@ def set_class_attribute(element: Test, value):
     return element
 
 
-def main():
-    a = np.random.rand(500, 2)
-    lst = a.tolist()
-    displacement = QPointF(1, 1)
-    points = [QPointF(_pt[0], _pt[1]) for _pt in lst]
+def polytoqpointF(element: QPolygonF):
+    return element
 
+
+def main():
     clock = time.CLOCK_REALTIME
+
+    points = [QPointF(0.0, 0.0), QPointF(0.0, 1.0), QPointF(1.0, 1.0), QPointF(1.0, 0.0)]
+    test = Test(points)
+    a = test[0]
+    four = 4
+
+
+
+    #
     """
     start = time.clock_gettime_ns(clock)
     a = map(add_value, points, [displacement]*len(points))
@@ -54,7 +72,7 @@ def main():
 
     print(f"Map: \t\t {a_time}")  # 3314
     print(f"QT: \t\t {b_time}")  # 242590
-    """
+    
     inst = [Test() for _ in range(10)]
 
     start = time.clock_gettime_ns(clock)
@@ -67,7 +85,7 @@ def main():
 
     print(f"Map: \t\t {a_time}")  # 2426
     print(f"Loop: \t\t {b_time}")   # 47778
-
+    """
 
 if __name__ == "__main__":
     main()

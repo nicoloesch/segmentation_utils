@@ -57,14 +57,14 @@ class Canvas(QWidget):
 
     def handleShapeHovered(self,  shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
         """Handles both shape and vertex highlighting in one call as I then only have to update it once"""
-        self.labels = list(map(self.resetHighlight, self.labels))
+        self.on_ResetHighlight()
         if shape_idx > -1:
             self.labels[shape_idx].isHighlighted = True
         self.handleVertexHighlighted(closest_vertex_shape, vertex_idx)
         self.update()
 
     def handleShapeSelected(self, shape_idx: int, closest_vertex_shape: int, vertex_idx: int):
-        self.labels = list(map(self.resetSelection, self.labels))
+        self.on_ResetSelected()
         if shape_idx != -1:
             self.labels[shape_idx].isSelected = True
             self.sRequestLabelListUpdate.emit(shape_idx)
@@ -78,6 +78,16 @@ class Canvas(QWidget):
     def handleVertexSelected(self, shape_idx: int, vertex_idx: int):
         if vertex_idx != -1:
             self.labels[shape_idx].vertices.selectedVertex = vertex_idx
+
+    def on_ResetHighlight(self):
+        self.labels = list(map(self.resetHighlight, self.labels))
+
+    def on_ResetSelected(self):
+        self.labels = list(map(self.resetSelection, self.labels))
+
+    def on_ResetSelAndHigh(self):
+        self.labels = list(map(self.resetHighlight, self.labels))
+        self.labels = list(map(self.resetSelection, self.labels))
 
     @staticmethod
     def resetHighlight(label: Shape):

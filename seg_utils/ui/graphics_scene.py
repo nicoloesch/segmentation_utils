@@ -69,7 +69,7 @@ class ImageViewerScene(QGraphicsScene):
                 if self.isInDrawingMode():
                     self._startButtonPressed = True
                     self.starting_point = self.checkOutOfBounds(event.scenePos())
-                    if self.shape_type in ['polygon']:
+                    if self.shape_type in ['tempPolygon']:
                         if self.isOnBeginning(self.starting_point) and len(self.poly_points) > 1:
                             self.setClosedPath()
                         else:
@@ -92,19 +92,19 @@ class ImageViewerScene(QGraphicsScene):
         r"""Handle the event for moving the mouse"""
         if self.b_isInitialized:
             if self.isInDrawingMode():
-                if self.shape_type in ['polygon']:
+                if self.shape_type in ['tempPolygon']:
                     # intermediate points are rendered but only as temporary shapes
                     # this allows the clicking for new points which are then saved
                     intermediate_points = self.poly_points + [self.checkOutOfBounds(event.scenePos())]
                     self.sDrawing.emit(intermediate_points, self.shape_type)
                 else:
                     if self._startButtonPressed:
-                        if self.shape_type in ['trace']:
+                        if self.shape_type in ['tempTrace']:
                             self.poly_points.append(self.checkOutOfBounds(event.scenePos()))
                             self.sDrawing.emit(self.poly_points, self.shape_type)
                         elif self.shape_type in ['circle', 'rectangle']:
                             self.sDrawing.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())],
-                                                  self.shape_type)
+                                               self.shape_type)
             else:
                 # Here is the handling for the highlighting (if no start button is pressed)
                 # of shapes but also if one moves vertices or the entire shape
@@ -112,7 +112,7 @@ class ImageViewerScene(QGraphicsScene):
                     # TODO: maybe change the ordering as then the move the vertex has prio compared to the move shape
                     # this discriminates between whether one moves the entire shape of only a vertex
                     if self.hShape != -1:
-                        self.sMoveShape.emit(self.hShape, self.last_point - self.checkOutOfBounds(event.scenePos()))
+                        self.sMoveShape.emit(self.hShape, self.checkOutOfBounds(event.scenePos()) - self.last_point)
                         self.last_point = self.checkOutOfBounds(event.scenePos())
                     else:
                         self.sMoveVertex.emit(self.vShape, self.vNum, self.checkOutOfBounds(event.scenePos()))
@@ -129,7 +129,7 @@ class ImageViewerScene(QGraphicsScene):
                         self._startButtonPressed = False
                         self.sDrawingDone.emit([self.starting_point, self.checkOutOfBounds(event.scenePos())], self.shape_type)
                         self.starting_point = QPointF()
-                    elif self.shape_type in ['trace']:
+                    elif self.shape_type in ['tempTrace']:
                         self.setClosedPath()
                 else:
                     self.sRequestAnchorReset.emit(self.vShape)

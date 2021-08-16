@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsItem
-from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath
+from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QPainterPath, QPolygonF, QVector2D
 from PyQt5.QtCore import QPointF, Qt, QRectF, QSize
 
 from copy import deepcopy
@@ -23,30 +23,33 @@ class Shape(QGraphicsItem):
         super(Shape, self).__init__()
         self.image_size = image_size
         self.image_rect = QRectF(0, 0, self.image_size.width(), self.image_size.height())
-        self.label = label
-        self.shape_type = shape_type
         self.vertex_size = VERTEX_SIZE
-        self.points = points
-        self.flags = flags
-        self.group_id = group_id
+
+        # prioritize label dict
         if label_dict:
             if 'label' in label_dict:
                 self.label = label_dict['label']
             if 'points' in label_dict:
-                self.points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
+                _points = [QPointF(_pt[0], _pt[1]) for _pt in label_dict['points']]
             if 'shape_type' in label_dict:
                 self.shape_type = label_dict['shape_type']
             if 'flags' in label_dict:
                 self.flags = label_dict['flags']
             if 'group_id' in label_dict:
                 self.group_id = label_dict['group_id']
-        self.line_color, self.brush_color = None, None
+        else:
+            self.label = label
+            _points = points
+            self.shape_type = shape_type
+            self.flags = flags
+            self.group_id = group_id
+
+        self._path = None  # only necessary for the temporary Polygon and trace
+        self._anchorPoint = None
+        self.line_color, self.brush_color = QColor(), QColor()
         self.initColor(color)
         self.selected_color = Qt.GlobalColor.white
-        self.path = None
-        self.vertices = None
-        self._bounding_rect = None
-        self._anchorPoint = None
+        self.vertices = VertexCollection(_points, self.line_color, self.brush_color, self.vertex_size)
 
         # distinction between highlighted (hovering over it) and selecting it (click)
         self._isHighlighted = False
@@ -58,7 +61,7 @@ class Shape(QGraphicsItem):
         return f"Shape [{self.label.capitalize()}, {self.shape_type.capitalize()}]"
 
     def __eq__(self, other):
-        if self.points == other.points and self.label == other.label:
+        if self.vertices.vertices == other.vertices.vertices and self.label == other.label:
             return True
         else:
             return False
@@ -88,48 +91,41 @@ class Shape(QGraphicsItem):
         self._isClosedPath = value
 
     def boundingRect(self) -> QRectF:
-        return self._bounding_rect
+        return self.vertices.boundingRect()
 
     def to_dict(self) -> Tuple[dict, str]:
         r"""Returns a dict and a string from a shape item as those can be easier serialized
         with pickle compared to own classes"""
         # TODO: maybe json serialization? Or look into how one can pickle own classes and depickle them
         dict = {'label': self.label,
-                'points': [[_pt.x(), _pt.y()] for _pt in self.points],
+                'points': [[_pt.x(), _pt.y()] for _pt in self.vertices.vertices],
                 'shape_type': self.shape_type,
                 'flags': self.flags,
                 'group_id': self.group_id}
         return dict, self.label
 
     def initShape(self):
-        if self.shape_type not in ['polygon', 'rectangle', 'lines', 'circle', 'trace', None]:
+        if self.shape_type not in ['polygon', 'rectangle', 'circle', 'tempTrace', 'tempPolygon']:
             raise AttributeError("Unsupported Shape")
         # Add additional points
-        if self.shape_type in ['rectangle', 'circle'] and len(self.points) == 2:
-            self.getCorners()
+        if self.shape_type in ['rectangle', 'circle'] and len(self.vertices.vertices) == 2:
+            self.vertices.completePoly()
 
-        if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
+        # Generate path for the temporary Shapes
+        if self.shape_type in ['tempTrace', 'tempPolygon']:
+            # those two require unclosed paths and therefore work on paths
             self.initPath()
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
-            self._bounding_rect = self.path.boundingRect()
-
-        elif self.shape_type == "circle":
-            self.vertices = VertexCollection(self.points, self.line_color, self.brush_color, self.vertex_size)
-            self._bounding_rect = QRectF(self.points[0], self.points[2])
-
-    def initPath(self):
-        self.path = QPainterPath()
-        self.path.moveTo(self.points[0])
-        for _pnt in self.points[1:]:
-            self.path.lineTo(_pnt)
-        if self.shape_type not in ['lines', 'trace']:
-            # This is for drawing the initial traces and polygons such that they do not end and close immediately
-            self.path.closeSubpath()
 
     def initColor(self, color: QColor):
         if color:
             self.line_color, self.brush_color = color, deepcopy(color)
             self.brush_color.setAlphaF(0.5)
+
+    def initPath(self):
+        self._path = QPainterPath()
+        self._path.moveTo(self.vertices.vertices[0])
+        for _pnt in self.vertices.vertices[1:]:
+            self._path.lineTo(_pnt)
 
     def updateColor(self, color: QColor):
         if color:
@@ -137,56 +133,69 @@ class Shape(QGraphicsItem):
             self.brush_color.setAlphaF(0.5)
             self.vertices.updateColor(self.line_color, self.brush_color)
 
-    def getCorners(self):
-        """This function generates the other bounding points of the shape"""
-        self.points.insert(1, QPointF(self.points[1].x(), self.points[0].y()))
-        self.points.append(QPointF(self.points[0].x(), self.points[2].y()))
-
     def resetAnchor(self):
         """Resets the anchor set """
         self._anchorPoint = None
 
-    def updateShape(self, vNum: int, newPos: QPointF):
+    def moveVertex(self, vNum: int, newPos: QPointF):
+        """Handles the movement of one vertex"""
         if self.shape_type == 'polygon':
-            if self.path.elementAt(vNum):
-                self.path.setElementPositionAt(vNum, newPos.x(), newPos.y())
-                self.points[vNum] = newPos
-                self.vertices.points[vNum] = newPos
+            self.vertices.vertices[vNum] = QPointF(newPos.x(), newPos.y())
         elif self.shape_type in ['rectangle', 'circle']:
             if not self._anchorPoint:
                 # this point is the anchor a.k.a the point diagonally from the selected one
                 # however, as i am rebuilding the shape from there, i only need to select the anchor once and store it
-                self._anchorPoint = self.points[vNum - 2]
-            self.points = [self._anchorPoint, newPos]
-            if self.shape_type in ['rectangle', 'circle'] and len(self.points) == 2:
-                self.getCorners()
-            if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
-                self.initPath()
-                # reset the selected vertex as the ordering within the bounding rectangle changes
-                self.vertices.points = self.points
-                self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
-                self._bounding_rect = self.path.boundingRect()
+                self._anchorPoint = deepcopy(self.vertices.vertices[vNum - 2])
+                print("New Anchor Set")
+            self.vertices.vertices = QPolygonF([self._anchorPoint, newPos])
+            print(self._anchorPoint)
 
-            elif self.shape_type == "circle":
-                self.vertices.points = self.points
-                self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
-                self._bounding_rect = QRectF(self.points[0], self.points[2])
+        if self.shape_type in ['rectangle', 'circle'] and len(self.vertices.vertices) == 2:
+            self.vertices.completePoly()
+
+        self.vertices.updateSelAndHigh(np.asarray([newPos.x(), newPos.y()]))
+
+    def moveShape(self, displacement: QPointF) -> None:
+        r"""Moves the shape by the given displacement"""
+        displacement = self.checkDisplacement(displacement)
+        if self.shape_type in ['polygon', 'rectangle', 'circle']:
+            self.vertices.vertices.translate(displacement)
+
+    def checkDisplacement(self, displacement: QPointF) -> List[QPointF]:
+        """This function checks whether the bounding rect of the current shape exceeds the image if the
+        displacement is applied. If so, no displacement is applied"""
+        new_br = deepcopy(self.boundingRect())
+        new_br.translate(displacement.x(), displacement.y())
+        if self.image_rect.contains(new_br):
+            return displacement
+        else:
+            return QPointF(0.0, 0.0)
 
     def paint(self, painter: QPainter) -> None:
-        if len(self.points) > 0:
-            if not self.isSelected:
-                painter.setPen(QPen(self.line_color, 1))  # TODO: pen width depending on the image size
-            else:
+        if len(self.vertices.vertices) > 0:
+            # SELECTION
+            if self.isSelected:
                 painter.setPen(QPen(self.selected_color, 1))
+            else:
+                painter.setPen(QPen(self.line_color, 1))  # TODO: pen width depending on the image size
+
+            # HIGHLIGHT BRUSH
             if self.isHighlighted or self.isSelected:
                 painter.setBrush(QBrush(self.brush_color))
             else:
                 painter.setBrush(QBrush())
-            if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
-                painter.drawPath(self.path)
+
+            # SHAPES DRAWING
+            if self.shape_type in ['polygon', 'rectangle']:
+                painter.drawPolygon(self.vertices.vertices)
                 self.vertices.paint(painter)
+
+            elif self.shape_type in ['tempTrace', 'tempPolygon']:
+                painter.drawPath(self._path)
+                self.vertices.paint(painter)
+
             elif self.shape_type == "circle":
-                painter.drawEllipse(QRectF(self.points[0], self.points[2]))
+                painter.drawEllipse(QRectF(self.vertices.vertices[0], self.vertices.vertices[2]))
                 if self.isSelected or self.isHighlighted or self.vertices.selectedVertex != -1:
                     self.vertices.paint(painter)
 
@@ -201,10 +210,11 @@ class Shape(QGraphicsItem):
 
     def contains(self, point: QPointF) -> bool:
         r"""Reimplementation as the initial method for a QGraphicsItem uses the shape,
-        which results in the bounding rectangle"""
+        which results in the bounding rectangle. As both tempRectangle and tempTrace do not need
+        a contain method due to being an unfinished shape, no method is here for them"""
 
         if self.shape_type in ['rectangle', 'polygon']:
-            return self.path.contains(point)
+            return self.vertices.vertices.containsPoint(point, Qt.OddEvenFill)
 
         elif self.shape_type in ['circle']:
             # elliptic formula is (x²/a² + y²/b² = 1) so if the point fulfills the equation respectively
@@ -218,30 +228,6 @@ class Shape(QGraphicsItem):
                 return True
             else:
                 return False
-
-    def move(self, displacement: QPointF) -> None:
-        r"""Moves the shape by the given displacement"""
-        self.points = self.checkBoundaries(displacement)
-        self.vertices.points = self.points
-        if self.shape_type in ['polygon', 'rectangle', 'lines', 'trace']:
-            self.initPath()
-            self._bounding_rect = self.path.boundingRect()
-
-        elif self.shape_type == "circle":
-            self._bounding_rect = QRectF(self.points[0], self.points[2])
-
-    def checkBoundaries(self, displacement: QPointF) -> List[QPointF]:
-        """This founction checks whether the bounding rect of the current shape exceeds the image if the
-        displacement is applied. If so, no displacement is applied"""
-        new_br = deepcopy(self.boundingRect())
-        new_br.setTopLeft(new_br.topLeft()-displacement)
-        new_br.setTopRight(new_br.topRight()-displacement)
-        new_br.setBottomLeft(new_br.bottomLeft() - displacement)
-        new_br.setBottomRight(new_br.bottomRight() - displacement)
-        if self.image_rect.contains(new_br):
-            return [pt-displacement for pt in self.points]
-        else:
-            return self.points
 
     @staticmethod
     def toQPointFList(point_list: List[List[float]]) -> List[QPointF]:
@@ -259,7 +245,8 @@ class Shape(QGraphicsItem):
 
 class VertexCollection(object):
     def __init__(self, points: List[QPointF], line_color: QColor, brush_color: QColor, vertex_size):
-        self.points = points
+        # i am going to save them as a polygon as it is a representation of a vector and i can access it like a matrix
+        self._points = QPolygonF(points)
         self.line_color = line_color
         self.brush_color = brush_color
         self.highlight_color = Qt.GlobalColor.white
@@ -269,8 +256,31 @@ class VertexCollection(object):
         self.selectedVertex = -1
         self._scaling = SCALING_INITIAL
 
+    """
+    def __getitem__(self, item):
+        if not isinstance(item, tuple):
+            item = tuple((item,))
+            # TODO: could be accelerated but most likely doesn't matter
+        ret = tuple([self._points[_pt] for _pt in item])
+        if len(ret) == 1:
+            return ret[0]
+        else:
+            return ret
+    """
+
+    def __len__(self):
+        return len(self._points)
+
+    @property
+    def vertices(self):
+        return self._points
+
+    @vertices.setter
+    def vertices(self, value):
+        self._points = value
+
     def paint(self, painter: QPainter):
-        for _idx, _vertex in enumerate(self.points):
+        for _idx, _vertex in enumerate(self._points):
             qtpoint = _vertex
             painter.setPen(QPen(self.line_color, 0.5))  # TODO: width dependent on the size of the image or something
             painter.setBrush(QBrush(self.brush_color))
@@ -291,12 +301,12 @@ class VertexCollection(object):
     def closestVertex(self, point: np.ndarray) -> int:
         """Calculate the euclidean distance between a point and all vertices and return the index of
         the closest node to the point"""
-        return closestEuclideanDistance(point, self.ListQPointF_to_Numpy(self.points))
+        return closestEuclideanDistance(point, self.ListQPointF_to_Numpy(self._points))
 
     def isOnVertex(self, point: QPointF) -> Tuple[bool, int]:
         """Check if a point is within the closest vertex rectangle"""
         closestVertex = self.closestVertex(np.asarray([point.x(), point.y()]))
-        vertexCenter = self.points[closestVertex]
+        vertexCenter = self._points[closestVertex]
         if closestVertex in [self.highlightedVertex, self.selectedVertex]:
             size = (self.vertex_size * self._scaling) / 2
         else:
@@ -317,6 +327,14 @@ class VertexCollection(object):
     def updateSelAndHigh(self, newPos: np.ndarray):
         idx = self.closestVertex(newPos)
         self.selectedVertex = self.highlightedVertex = idx
+
+    def boundingRect(self):
+        return self._points.boundingRect()
+
+    def completePoly(self):
+        """This function generates the other bounding points of the shape"""
+        self._points.insert(1, QPointF(self._points[1].x(), self._points[0].y()))
+        self._points.append(QPointF(self._points[0].x(), self._points[2].y()))
 
     @staticmethod
     def ListQPointF_to_Numpy(point_list: List[QPointF]):
