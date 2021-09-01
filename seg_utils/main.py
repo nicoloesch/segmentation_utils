@@ -17,8 +17,8 @@ from PyQt5.QtCore import QPointF
 def main(args):
 
     app = QApplication(sys.argv)
-    #window = SelectionMain()  # this opens the selection window
-    window = LabelMain()
+    window = SelectionMain()  # this opens the selection window
+    #window = LabelMain()
     #window = ViewerMain()
     window.show()
     sys.exit(app.exec_())

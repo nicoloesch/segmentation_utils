@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QDir, QUrl, Qt
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QStyle, QGraphicsView
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QStyle, QGraphicsView, QGraphicsScene
 from PyQt5.QtGui import QPixmap, QKeySequence
 
 from seg_utils.utils.database import SQLiteDatabase
@@ -30,6 +30,7 @@ class ViewerMain(QMainWindow, ViewerUI):
         self._videoDuration = None
         self.fps = 25.0
         self.frameDurationMS = (1.0/self.fps)*1000.0  # duration of one frame in ms
+        #self._scene = QGraphicsScene()
 
         # Other resources for various elements
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
@@ -192,14 +193,14 @@ class ViewerMain(QMainWindow, ViewerUI):
         rawImage = QPixmap(str(self.basedir / self.labeled_images[self.image_idx])).scaled(
             self.rawImage.width(),
             self.rawImage.width(), Qt.KeepAspectRatio)
-        self.rawImage.setImage(rawImage)
+        self.rawImage.setPixmap(rawImage)
         # TODO: replace with calls to the SQL database rather than the files themselves
         path_to_labelled = self.basedir / 'labels/SegmentationClassVisualization'
         filename_labeled = pathlib.Path(self.labeled_images[self.image_idx]).stem + '.png'
         labeledImage = QPixmap(str(path_to_labelled / filename_labeled)).scaled(
             self.labelImage.width(),
             self.labelImage.width(), Qt.KeepAspectRatio)
-        self.labelImage.setImage(labeledImage)
+        self.labelImage.setPixmap(labeledImage) # set image für label
 
     def keyPressEvent(self, event) -> None:
         pass

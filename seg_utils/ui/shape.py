@@ -148,7 +148,6 @@ class Shape(QGraphicsItem):
                 self._anchorPoint = deepcopy(self.vertices.vertices[vNum - 2])
                 print("New Anchor Set")
             self.vertices.vertices = QPolygonF([self._anchorPoint, newPos])
-            print(self._anchorPoint)
 
         if self.shape_type in ['rectangle', 'circle'] and len(self.vertices.vertices) == 2:
             self.vertices.completePoly()

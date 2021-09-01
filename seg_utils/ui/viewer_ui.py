@@ -55,7 +55,7 @@ class ViewerUI(object):
         self.imageLayout.setObjectName("imageLayout")
 
         # Raw Image Viewer which is part of Image Frame
-        self.rawImage = ImageViewer(self.imageFrame)
+        self.rawImage = QtWidgets.QLabel(self.imageFrame)
         self.rawImage.setObjectName("rawImage")
         self.rawImage.setMinimumWidth(400)
         self.rawImage.setMaximumWidth(900)
@@ -67,7 +67,7 @@ class ViewerUI(object):
         self.stackedWidget.setMaximumWidth(800)
         self.stackedWidget.setObjectName("stackedWidget")
 
-        self.labelImage = ImageViewer(self.stackedWidget)
+        self.labelImage = QtWidgets.QLabel(self.stackedWidget)
         self.labelImage.setMinimumWidth(400)
         self.labelImage.setMaximumWidth(900)
         self.labelImage.setObjectName("labelImage")

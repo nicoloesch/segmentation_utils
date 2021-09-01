@@ -39,7 +39,7 @@ conda activate <your_env_name>
 pip install pyqt5  # pyqt5 can be installed via pip on python3
 pip install seg_utils
 ```
-####Note for Linux Users
+#### Note for Linux Users
 The repository requires both `PyQt5` and `opencv-python`. There might be a conflict within the base version of `PyQt5`
 and its binaries that ship with Linux leading to the following error
 ```bash
@@ -54,7 +54,7 @@ pip install --no-binary opencv-python opencv-python
 ```
 
 ## Know Issues
-###Database
+### Database
 Make sure, your database is composed similarly to the one specified in `utils.database` specified in the following in 
 shortened notation:
 ```python
@@ -74,9 +74,12 @@ shortened notation:
 ```
 
 ### Folder Structure
-Make sure your folder structure is the following:
+Make sure your folder structure is similar to following as the database is dependent on the labeled output folders, 
+which are set manually. Therefore, have at least the folder `SegmentationClassVisualization` 
+directly underneath the database:
+
 ```bash
-.
+│ database.db
 ├── converted
 │   ├── video_0001.mp4
 │   │         .
